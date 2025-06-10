@@ -1,0 +1,1 @@
+# Rstat - A Rust healthcheck status page
