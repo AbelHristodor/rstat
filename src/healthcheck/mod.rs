@@ -1,5 +1,6 @@
 use crate::service::Service;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub mod http;
@@ -37,7 +38,7 @@ pub struct HealthCheckResult {
 }
 
 /// Kind represents the type of healthcheck to perform.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Kind {
     /// An HTTP healthcheck executes a request to a specified URL.
     HTTP(http::HTTPChecker),
@@ -50,6 +51,16 @@ impl Into<String> for Kind {
         match self {
             Kind::HTTP(_) => "HTTP".to_string(),
             Kind::TCP(_) => "TCP".to_string(),
+        }
+    }
+}
+
+impl From<String> for Kind {
+    fn from(kind: String) -> Self {
+        match kind.as_str() {
+            "HTTP" => Kind::HTTP(http::HTTPChecker::default()),
+            "TCP" => Kind::TCP(tcp::TCPChecker::default()),
+            _ => panic!("Invalid healthcheck kind"),
         }
     }
 }

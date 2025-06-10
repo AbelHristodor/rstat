@@ -2,6 +2,7 @@ use super::{DEFAULT_MAX_RETRIES, DEFAULT_TIMEOUT, HealthCheckResult, HealthCheck
 use async_trait::async_trait;
 use http::{HeaderMap, Method};
 use tracing::info;
+use serde::{Serialize, Deserialize};
 
 /// Constructor method to create a new instance
 pub fn new(url: String, client: Option<reqwest::Client>) -> HTTPChecker {
@@ -18,15 +19,18 @@ pub fn new(url: String, client: Option<reqwest::Client>) -> HTTPChecker {
 }
 
 /// HTTPChecker is a health checker that uses HTTP requests to check the health of a service.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct HTTPChecker {
     pub url: String,
+    #[serde(with = "http_serde::option::method")]
     pub method: Option<Method>,
+    #[serde(with = "http_serde::option::header_map")]
     pub headers: Option<HeaderMap>,
     pub body: Option<String>,
     pub retries: Option<u8>,
     pub timeout: Option<std::time::Duration>,
-
+    
+    #[serde(skip)]
     pub client: reqwest::Client,
 }
 

@@ -4,8 +4,10 @@ use uuid::Uuid;
 
 use crate::healthcheck::Kind;
 
+pub mod db;
+
 /// Service represents an entity that can be checked for health.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Service {
     /// Unique identifier for the service.
     pub id: Uuid,
