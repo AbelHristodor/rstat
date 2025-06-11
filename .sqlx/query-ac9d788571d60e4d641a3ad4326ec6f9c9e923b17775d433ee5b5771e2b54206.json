@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, kind, interval, config FROM services",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "interval",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 4,
+        "name": "config",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "ac9d788571d60e4d641a3ad4326ec6f9c9e923b17775d433ee5b5771e2b54206"
+}

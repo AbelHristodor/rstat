@@ -1,11 +1,13 @@
+use crate::utils;
+
 use super::{DEFAULT_MAX_RETRIES, DEFAULT_TIMEOUT, HealthCheckResult, HealthChecker};
 use async_trait::async_trait;
 use http::{HeaderMap, Method};
+use serde::{Deserialize, Serialize};
 use tracing::info;
-use serde::{Serialize, Deserialize};
 
 /// Constructor method to create a new instance
-pub fn new(url: String, client: Option<reqwest::Client>) -> HTTPChecker {
+pub fn new(url: String, client: Option<reqwest::Client>) -> Result<HTTPChecker, anyhow::Error> {
     HTTPChecker {
         url,
         headers: None,
@@ -16,6 +18,7 @@ pub fn new(url: String, client: Option<reqwest::Client>) -> HTTPChecker {
         timeout: None,
         client: client.unwrap_or_default(),
     }
+    .validate()
 }
 
 /// HTTPChecker is a health checker that uses HTTP requests to check the health of a service.
@@ -29,12 +32,18 @@ pub struct HTTPChecker {
     pub body: Option<String>,
     pub retries: Option<u8>,
     pub timeout: Option<std::time::Duration>,
-    
+
     #[serde(skip)]
     pub client: reqwest::Client,
 }
 
 impl HTTPChecker {
+    fn validate(self) -> Result<Self, anyhow::Error> {
+        utils::validate_url(&self.url)?;
+
+        Ok(self)
+    }
+
     pub fn url(mut self, url: String) -> Self {
         self.url = url;
         self

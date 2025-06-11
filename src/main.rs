@@ -1,5 +1,7 @@
-use std::{env, path::Path, time::Duration};
+use std::{env, path::Path, process::exit};
 
+use anyhow::Ok;
+use clap::Parser;
 use sqlx::migrate::Migrator;
 use tracing::info;
 
@@ -8,37 +10,47 @@ mod healthcheck;
 mod service;
 mod scheduler;
 mod utils;
+mod cli;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt::init();
-
     dotenv::dotenv().ok();
-    // Set the DATABASE_URL as a compile-time environment variable.
-    if let Ok(database_url) = env::var("DATABASE_URL") {
-        println!("cargo:rerun-if-env-changed=DATABASE_URL={}", database_url);
+    
+    let cli = cli::Cli::parse();
+    match &cli.command {
+        cli::Commands::Seed=> seed().await?,
+        cli::Commands::Start => start().await?,
     }
 
-    let db_url = "postgres://postgres:postgres@localhost/postgres".to_string();
-    let pool = sqlx::PgPool::connect(&db_url).await?;
+    Ok(())
+}
+
+
+async fn start() -> Result<(), anyhow::Error> {
+    let database_url = env::var("DATABASE_URL").expect("Expected DATABASE_URL in the environment"); 
+
+    let pool = sqlx::PgPool::connect(&database_url).await?;
     Migrator::new(Path::new("migrations")).await?.run(&pool).await?;
 
     let cloned_db = pool.clone();
     let handle = tokio::spawn(async {
-        let mut scheduler = scheduler::Scheduler::new(cloned_db);
+        let mut scheduler = scheduler::Scheduler::new(cloned_db).init().await.expect("Failed to initialize scheduler");
         scheduler.start().await;
     });
-
-    let checker = healthcheck::http::new("localhost:5000/health".into(), None);
-    let http = healthcheck::Kind::HTTP(checker);
-
-    let id = service::db::create(&pool, "example", http.into(), Duration::from_secs(10)).await?;
-    info!("Created service with id: {}", id);
-    
-    let svc = service::db::get(&pool, id).await?;
-    info!("Retrieved service with id: {:?}", svc);
-
     handle.await?;
+    Ok(())
+}
 
+async fn seed() -> Result<(), anyhow::Error> {
+    let database_url = env::var("DATABASE_URL").expect("Expected DATABASE_URL in the environment"); 
+
+    let pool = sqlx::PgPool::connect(&database_url).await?;
+    Migrator::new(Path::new("migrations")).await?.run(&pool).await?;
+    
+    let svc = service::fixtures::fixtures()?;
+    service::db::bulk_create(&pool, &svc).await?;
+    
+    info!("Seeding complete");
     Ok(())
 }

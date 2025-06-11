@@ -28,6 +28,14 @@ impl PartialEq for HealthCheckRequest {
     }
 }
 
+impl HealthCheckRequest {
+    pub fn new(service: Service) -> Self {
+        HealthCheckRequest {
+            service: service
+        }
+    }
+}
+
 /// HealthCheckResult represents the result of a healthcheck.
 #[derive(Debug)]
 pub struct HealthCheckResult {

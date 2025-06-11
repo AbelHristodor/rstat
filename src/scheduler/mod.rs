@@ -1,23 +1,40 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, ops::Deref, time::Duration};
 
+use anyhow::Ok;
 use futures::StreamExt;
 use tokio_util::time::delay_queue;
 use tracing::{debug, error, info};
 
-use crate::healthcheck::{self, HealthCheckRequest, HealthChecker};
+use crate::{healthcheck::{self, HealthCheckRequest, HealthChecker}, service::{self, Service}};
 
 pub struct Scheduler {
     pub queue: tokio_util::time::DelayQueue<uuid::Uuid>,
     pub db: sqlx::PgPool,
+    
+    services: Vec<service::Service>,
     entries: HashMap<uuid::Uuid, (HealthCheckRequest, delay_queue::Key)>,
 }
 
 impl Scheduler {
     pub fn new(db: sqlx::PgPool) -> Self {
-        Scheduler {
+        Self {
             queue: tokio_util::time::DelayQueue::new(),
             entries: HashMap::new(),
+            services: Vec::new(),
             db,
+        }
+    }
+    
+    pub async fn init(mut self) -> Result<Self, anyhow::Error>{
+        self.services = service::db::all(&self.db).await?;
+        self.enqueue_all();
+        Ok(self)
+    }
+    
+    fn enqueue_all(&mut self) {
+        for svc in self.services.clone() {
+            let request = HealthCheckRequest::new(svc.clone());
+            self.enqueue(request);
         }
     }
 
@@ -26,6 +43,7 @@ impl Scheduler {
         let id = request.service.id;
         let key = self.queue.insert(id, timeout);
         self.entries.insert(id, (request, key));
+        info!("Enqueued service {}", id);
     }
 
     pub fn dequeue(&mut self, id: uuid::Uuid) {

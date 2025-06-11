@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::healthcheck::Kind;
 
 pub mod db;
+pub mod fixtures;
 
 /// Service represents an entity that can be checked for health.
 #[derive(Clone, Debug)]

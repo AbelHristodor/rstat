@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO services (id, name, kind, interval, config) VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Int2",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "04945e3519c4a252adfdb290db0195e6de9ada5eeace02ae9f8ed61324b78dda"
+}
