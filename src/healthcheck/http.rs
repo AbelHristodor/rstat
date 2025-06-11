@@ -4,6 +4,7 @@ use super::{DEFAULT_MAX_RETRIES, DEFAULT_TIMEOUT, HealthCheckResult, HealthCheck
 use async_trait::async_trait;
 use http::{HeaderMap, Method};
 use serde::{Deserialize, Serialize};
+use tokio::time::Instant;
 use tracing::info;
 
 /// Constructor method to create a new instance
@@ -44,11 +45,6 @@ impl HTTPChecker {
         Ok(self)
     }
 
-    pub fn url(mut self, url: String) -> Self {
-        self.url = url;
-        self
-    }
-
     pub fn headers(mut self, headers: HeaderMap) -> Self {
         self.headers = Some(headers);
         self
@@ -68,58 +64,66 @@ impl HTTPChecker {
         self.timeout = Some(std::time::Duration::from_secs(timeout as u64));
         self
     }
-
-    pub fn client(mut self, client: reqwest::Client) -> Self {
-        self.client = client;
-        self
-    }
 }
 
 /// HTTPChecker is a health checker for HTTP services.
 #[async_trait]
 impl HealthChecker for HTTPChecker {
     /// Checks the health of the HTTP service
-    async fn check(&self) -> HealthCheckResult {
+    async fn check(&self) -> Result<HealthCheckResult, anyhow::Error> {
         let client = self.client.clone();
-
-        let max_retries = self.retries.clone().unwrap_or(DEFAULT_MAX_RETRIES);
-        let mut attempts: u32 = 0;
+        let max_retries = self.retries.unwrap_or(DEFAULT_MAX_RETRIES);
+        let mut attempts: u8 = 0;
         let mut last_error: Option<String> = None;
 
-        // retry the healthcheck until max retries is reached
-        while attempts <= max_retries as u32 {
+        // Helper function to build the request
+        let build_request = || {
             let method = self.method.clone().unwrap();
             let headers = self.headers.clone().unwrap_or_default();
             let body = self.body.clone().unwrap_or_default();
             let timeout = self
                 .timeout
-                .clone()
-                .unwrap_or(std::time::Duration::from_secs(DEFAULT_TIMEOUT as u64));
+                .unwrap_or_else(|| std::time::Duration::from_secs(DEFAULT_TIMEOUT as u64));
             let url = self.url.clone();
 
-            // Run the HTTP request
-            let result = client
+            client
                 .request(method, url)
                 .headers(headers)
                 .body(body)
                 .timeout(timeout)
-                .send()
-                .await;
+                .build()
+        };
+
+        // Retry the healthcheck until max retries is reached
+        while attempts <= max_retries {
+            let req = match build_request() {
+                Ok(r) => r,
+                Err(e) => {
+                    last_error = Some(e.to_string());
+                    break;
+                }
+            };
+
+            let start_time = Instant::now();
+            let result = client.execute(req).await;
+            let elapsed = start_time.elapsed();
 
             match result {
                 Ok(r) => {
-                    return HealthCheckResult {
+                    let success = r.status().is_success();
+                    return Ok(HealthCheckResult {
                         id: uuid::Uuid::new_v4(),
-                        success: true,
+                        success,
+                        response_time: elapsed.as_millis(),
                         code: r.status().as_u16() as u64,
-                        error: None,
-                    };
+                        message: r.text().await.unwrap_or_default(),
+                    });
                 }
                 Err(err) => {
                     attempts += 1;
                     last_error = Some(err.to_string());
 
-                    if attempts <= max_retries as u32 {
+                    if attempts <= max_retries {
                         info!("Retrying... attempt {}/{}", attempts, max_retries);
                     } else {
                         info!("Max retries reached. Aborting...");
@@ -129,11 +133,12 @@ impl HealthChecker for HTTPChecker {
             }
         }
 
-        HealthCheckResult {
-            id: uuid::Uuid::new_v4(), // or use the service id
+        Ok(HealthCheckResult {
+            id: uuid::Uuid::new_v4(),
             success: false,
+            response_time: 0,
             code: 0,
-            error: last_error,
-        }
+            message: last_error.unwrap_or_default(),
+        })
     }
 }

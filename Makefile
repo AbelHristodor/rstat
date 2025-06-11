@@ -22,7 +22,6 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 DOCKERENV=DOCKER_BUILDKIT=1
-COMPOSE := $(shell echo "-f $(pwd)/docker-compose.yml)")
 
 default: help
 .PHONY: help
@@ -33,22 +32,27 @@ help:
 ########################################################
 # Build Executables
 ########################################################
+run: migrate ## Run the application
+	cargo run start
+seed: migrate ## Populate the database with initial data
+	cargo run seed
 
 ########################################################
 # Infrastructure
 ########################################################
+ 
 infrastructure-up: ## Boot up infrastructure
-	$(DOCKERENV) docker compose $(COMPOSE) up -d --remove-orphans --wait
+	$(DOCKERENV) docker compose up -d --remove-orphans --wait
 .PHONY: infrastructure-up
 
-infrastructure-down: ## Stop up infrastructure
-	$(DOCKERENV) docker compose $(COMPOSE) down
+infrastructure-down: ## Stop infrastructure
+	$(DOCKERENV) docker compose down
 .PHONY: infrastructure-down
 	
-infrastructure-down-volumes: ## Stop up infrastructure
-	$(DOCKERENV) docker compose $(COMPOSE) down -v
+infrastructure-down-volumes: ## Stop infrastructure and remove volumes
+	$(DOCKERENV) docker compose down -v
 .PHONY: infrastructure-down-volumes
-	
+
 ########################################################
 # Database 
 ########################################################
@@ -62,19 +66,15 @@ migrate: sqlx-cli ## Run database migrations
 test-svc-up: ## Start up a service for testing
 	python3 test/app.py
 .PHONY: test-svc-up
-	
+
 ########################################################
 # Install dependencies
 ########################################################
-sqlx-cli: ## Checks if github CLI is installed
-ifeq ($(CI),0) ## sIf not in a CI environment (CI=true)
-	if command -v sqlx >/dev/null 2>&1; then \
-	  echo "ℹ️  SQLX found at: $$(command -v sqlx)"; \
-	else \
-	  cargo install sqlx-cli
+sqlx-cli: ## Checks if SQLX cli is installed
+	if ! command -v sqlx >/dev/null 2>&1; then \
+	  cargo install sqlx-cli; \
 	  exit 1; \
 	fi
-endif
 .PHONY: sqlx-cli
 
 # make-executable ensures a file is executable (+x).

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 pub mod http;
 pub mod tcp;
-
+pub mod db;
 
 const DEFAULT_MAX_RETRIES: u8 = 3;
 const DEFAULT_TIMEOUT: u8 = 5;
@@ -13,7 +13,7 @@ const DEFAULT_TIMEOUT: u8 = 5;
 /// Trait for all entities that can be healthchecked.
 #[async_trait]
 pub trait HealthChecker {
-    async fn check(&self) -> HealthCheckResult;
+    async fn check(&self) -> Result<HealthCheckResult, anyhow::Error>;
 }
 
 /// HealthCheckRequest represents a request to perform a healthcheck.
@@ -42,7 +42,8 @@ pub struct HealthCheckResult {
     pub id: Uuid,
     pub success: bool,
     pub code: u64,
-    pub error: Option<String>,
+    pub response_time: u128,
+    pub message: String,
 }
 
 /// Kind represents the type of healthcheck to perform.

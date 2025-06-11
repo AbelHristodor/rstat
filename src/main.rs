@@ -1,4 +1,4 @@
-use std::{env, path::Path, process::exit};
+use std::{env, path::Path};
 
 use anyhow::Ok;
 use clap::Parser;

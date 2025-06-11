@@ -1,11 +1,10 @@
-use std::{collections::HashMap, ops::Deref, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
-use anyhow::Ok;
 use futures::StreamExt;
 use tokio_util::time::delay_queue;
 use tracing::{debug, error, info};
 
-use crate::{healthcheck::{self, HealthCheckRequest, HealthChecker}, service::{self, Service}};
+use crate::{healthcheck::{self, HealthCheckRequest, HealthChecker}, service::{self}};
 
 pub struct Scheduler {
     pub queue: tokio_util::time::DelayQueue<uuid::Uuid>,
@@ -64,30 +63,27 @@ impl Scheduler {
                     if let Some((request, _)) = self.entries.get(&id) {
                         // we need to enqueue it again and process it
                         let req = request.clone();
-                        let kind: String = req.service.kind.clone().into();
 
                         // Then we run it
-                        let result = match req.service.kind {
+                        let healtcheck = match req.service.kind {
                             crate::healthcheck::Kind::HTTP(httpchecker) => {
                                 httpchecker.check().await
                             }
                             crate::healthcheck::Kind::TCP(tcpchecker) => tcpchecker.check().await,
                         };
-
-                        match result.error {
-                            Some(err) => {
-                                error!(
-                                    "Health check failed for service {} - {}: {}",
-                                    req.service.name, kind, err
-                                );
+                        match healtcheck {
+                            Ok(result) => {
+                                debug!("Healthcheck successful for id: {}", result.id);
+                                match healthcheck::db::result::create(&self.db, result,  req.service.id).await {
+                                    Ok(id) => info!("Healthcheck result created with id: {}", id),
+                                    Err(err) => error!("Cannot save healthcheck result to db with id: {} and err: {}", id, err),
+                                }
+                            },
+                            Err(err) => {
+                                error!("Healthcheck failed with error: {}", err);
                             }
-                            None => {
-                                info!(
-                                    "Health check successful for service {} - {}",
-                                    req.service.name, kind
-                                );
-                            }
-                        }
+                        };
+                        
 
                         // enqueue it again
                         self.enqueue(request.clone())

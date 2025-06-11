@@ -11,7 +11,7 @@ use crate::healthcheck::{self, Kind};
 use super::Service;
 
 pub fn fixtures() -> Result<Vec<Service>, anyhow::Error> {
-    let url = "http://localhost:5000";
+    let url = "http://localhost:5000/health";
     let mut headers = HeaderMap::new();
     headers.insert(USER_AGENT, "Rstat/Healtcheck".parse().unwrap());
     headers.insert(HOST, "localhost".parse().unwrap());

@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS healthcheck_results (
     service_id UUID NOT NULL,
     success BOOLEAN NOT NULL,
     response_time BIGINT,
-    error VARCHAR(255),
+    code VARCHAR(10),
+    message TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (service_id) REFERENCES services(id)
 );

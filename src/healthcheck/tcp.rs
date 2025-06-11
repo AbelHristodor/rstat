@@ -3,10 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use super::{HealthCheckResult, HealthChecker};
 
-pub fn new(host: String, port: u16) -> TCPChecker {
-    TCPChecker { host, port }
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TCPChecker {
     pub host: String,
@@ -16,14 +12,15 @@ pub struct TCPChecker {
 #[async_trait]
 impl HealthChecker for TCPChecker {
     /// Checks the health of the TCP service
-    async fn check(&self) -> HealthCheckResult {
+    async fn check(&self) -> Result<HealthCheckResult, anyhow::Error> {
         // let stream = TcpStream::connect((self.host.as_str(), self.port)).await;
 
-        HealthCheckResult {
+        Ok(HealthCheckResult {
             id: uuid::Uuid::new_v4(),
             success: false,
+            response_time: 0,
             code: 0,
-            error: Some("Hello World".to_string()),
-        }
+            message: "Hello World".to_string(),
+        })
     }
 }
