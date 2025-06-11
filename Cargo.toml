@@ -1,5 +1,8 @@
 [package]
 name = "rstat"
+authors = ["Abel Hristodor <habelor@gmail.com>"]
+description = "An async rust health check web app"
+readme = "README.md"
 version = "0.1.0"
 edition = "2024"
 
