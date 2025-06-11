@@ -11,7 +11,7 @@ use tower_http::{
 };
 use tracing::{Level, info};
 
-use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::EnvFilter;
 
 mod cli;
 mod healthcheck;
