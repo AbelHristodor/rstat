@@ -93,17 +93,12 @@ impl HealthChecker for HTTPChecker {
                 .timeout(timeout)
                 .build()
         };
+        
 
         // Retry the healthcheck until max retries is reached
         while attempts <= max_retries {
-            let req = match build_request() {
-                Ok(r) => r,
-                Err(e) => {
-                    last_error = Some(e.to_string());
-                    break;
-                }
-            };
-
+            let req = build_request()?;
+            
             let start_time = Instant::now();
             let result = client.execute(req).await;
             let elapsed = start_time.elapsed();

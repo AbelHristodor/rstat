@@ -17,7 +17,7 @@ pub trait HealthChecker {
 }
 
 /// HealthCheckRequest represents a request to perform a healthcheck.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct HealthCheckRequest {
     pub service: Service,
 }
