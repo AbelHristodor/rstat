@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::service::Service;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -53,6 +55,15 @@ pub enum Kind {
     HTTP(http::HTTPChecker),
     /// A TCP healthcheck attempts to connect to a specified host and port.
     TCP(tcp::TCPChecker),
+}
+
+impl Display for Kind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Kind::HTTP(_) => write!(f, "HTTP"),
+            Kind::TCP(_) => write!(f, "TCP"),
+        }
+    }
 }
 
 impl Into<String> for Kind {

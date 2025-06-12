@@ -38,7 +38,8 @@ pub async fn all(pool: &sqlx::PgPool) -> Result<Vec<Service>, sqlx::Error> {
     Ok(svc)
 }
 
-pub async fn get(pool: &sqlx::PgPool, id: uuid::Uuid) -> Result<Service, sqlx::Error> {
+pub async fn get(pool: &sqlx::PgPool, id: String) -> Result<Service, anyhow::Error> {
+    let uuid = uuid::Uuid::parse_str(&id)?;
     let record = sqlx::query!(
         "SELECT id, name, kind, interval, config FROM services WHERE id = $1",
         id
@@ -56,7 +57,7 @@ pub async fn get(pool: &sqlx::PgPool, id: uuid::Uuid) -> Result<Service, sqlx::E
     .unwrap();
 
     let svc = Service {
-        id,
+        id: uuid,
         name: record.name,
         kind,
         interval: Duration::from_secs(record.interval as u64),
@@ -91,7 +92,6 @@ pub async fn create(
 }
 
 pub async fn bulk_create(pool: &sqlx::PgPool, services: &Vec<Service>) -> Result<(), sqlx::Error> {
-
     for service in services {
         let id = uuid::Uuid::new_v4();
         let interval_secs = service.interval.as_secs();
@@ -110,6 +110,15 @@ pub async fn bulk_create(pool: &sqlx::PgPool, services: &Vec<Service>) -> Result
         .await?;
         info!("Service {} created", service.name);
     }
+
+    Ok(())
+}
+
+pub async fn delete(pool: &sqlx::PgPool, id: String) -> Result<(), anyhow::Error> {
+    let uuid = uuid::Uuid::parse_str(&id)?;
+    sqlx::query!("DELETE FROM services WHERE id = $1", uuid)
+        .execute(pool)
+        .await?;
 
     Ok(())
 }

@@ -1,23 +1,30 @@
-use std::{env, path::Path};
+use std::{env, path::Path, sync::Arc, time::Duration};
 
-use anyhow::Ok;
-use axum::{Json, Router, routing::post};
+use api::{CreateServiceRequest, DeleteServiceRequest, GetServiceRequest};
+use axum::{Json, Router, extract::State, routing::post};
 use clap::Parser;
 use http::StatusCode;
+use service::Service;
 use sqlx::migrate::Migrator;
 use tower_http::{
     LatencyUnit,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
-use tracing::{Level, info};
+use tracing::{error, info, Level};
 
 use tracing_subscriber::EnvFilter;
 
+mod api;
 mod cli;
 mod healthcheck;
 mod scheduler;
 mod service;
 mod utils;
+
+#[derive(Clone)]
+struct AppState {
+    pool: sqlx::PgPool,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -51,39 +58,96 @@ async fn start() -> Result<(), anyhow::Error> {
         .await?;
 
     let cloned_db = pool.clone();
+    
+    let state = AppState { pool: pool.clone() };
+    
     let handle = tokio::spawn(async {
         let mut scheduler = scheduler::Scheduler::new(cloned_db)
             .init()
             .await
             .expect("Failed to initialize scheduler");
+        
         scheduler.start().await;
     });
 
     let server = tokio::spawn(async {
-        let app = Router::new().route("/http", post(create_http_check)).layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::new().include_headers(true))
-                .on_request(DefaultOnRequest::new().level(Level::INFO))
-                .on_response(
-                    DefaultOnResponse::new()
-                        .level(Level::INFO)
-                        .latency_unit(LatencyUnit::Micros),
-                ),
-        );
+        let app = Router::new()
+            .route("/http", post(create_http_check))
+            .layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(DefaultMakeSpan::new().include_headers(true))
+                    .on_request(DefaultOnRequest::new().level(Level::INFO))
+                    .on_response(
+                        DefaultOnResponse::new()
+                            .level(Level::INFO)
+                            .latency_unit(LatencyUnit::Micros),
+                    ),
+            )
+            .with_state(state);
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
         info!("Server started on {}", listener.local_addr().unwrap());
         axum::serve(listener, app).await.unwrap();
     });
-
+    
     handle.await?;
     server.await?;
 
     Ok(())
 }
-async fn create_http_check() -> (StatusCode, Json<String>) {
-    (StatusCode::OK, Json("OK".to_string()))
+
+async fn create_http_check(
+    State(state): State<AppState>,
+    Json(payload): Json<CreateServiceRequest>,
+) -> (StatusCode, Json<String>) {
+    
+    let svc = service::db::create(
+        &state.pool,
+        &payload.name,
+        payload.kind,
+        Duration::from_secs(payload.interval),
+    ).await;
+    
+    match svc {
+        Ok(id) => (StatusCode::CREATED, Json(id.to_string())),
+        Err(err) => (StatusCode::BAD_REQUEST, Json(err.to_string())),
+    }
 }
+
+async fn delete_http_check(
+    State(state): State<AppState>,
+    Json(payload): Json<DeleteServiceRequest>,
+) -> StatusCode {
+    
+    let svc = service::db::delete(
+        &state.pool,
+        payload.id,
+    ).await;
+    
+    match svc {
+        Ok(()) => StatusCode::OK,
+        Err(err) => {
+            error!("Failed to delete service: {}", err);
+            StatusCode::BAD_REQUEST
+        }
+    }
+}
+
+// async fn get_http_check(
+//     State(state): State<AppState>,
+//     Json(payload): Json<GetServiceRequest>,
+// ) -> (StatusCode, Json<Service>) {
+    
+//     let svc = service::db::get(
+//         &state.pool,
+//         payload.id,
+//     ).await;
+    
+//     match svc {
+//         Ok(svc) => (StatusCode::OK, Json(svc)),
+//         Err(err) => (StatusCode::BAD_REQUEST, Json()),
+//     }
+// }
 
 async fn seed() -> Result<(), anyhow::Error> {
     let database_url = env::var("DATABASE_URL").expect("Expected DATABASE_URL in the environment");
