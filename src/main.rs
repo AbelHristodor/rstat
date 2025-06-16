@@ -1,11 +1,12 @@
 use std::{env, path::Path, sync::Arc, time::Duration};
 
 use api::{CreateServiceRequest, DeleteServiceRequest, GetServiceRequest};
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{extract::State, routing::{delete, post}, Json, Router};
 use clap::Parser;
 use http::StatusCode;
 use service::Service;
 use sqlx::migrate::Migrator;
+use tokio::sync::mpsc;
 use tower_http::{
     LatencyUnit,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
@@ -61,18 +62,30 @@ async fn start() -> Result<(), anyhow::Error> {
     
     let state = AppState { pool: pool.clone() };
     
-    let handle = tokio::spawn(async {
-        let mut scheduler = scheduler::Scheduler::new(cloned_db)
+    let (result_tx, mut result_rx) = mpsc::channel(100);
+    
+    let cloned_tx = result_tx.clone();
+    let scheduler = tokio::spawn(async {
+        let mut scheduler = scheduler::Scheduler::new(cloned_db, cloned_tx)
             .init()
             .await
             .expect("Failed to initialize scheduler");
         
         scheduler.start().await;
     });
+    
+    let notifier = tokio::spawn({
+        async move {
+            while let Some(result) = result_rx.recv().await {
+                info!("Received result: {:?}", result);
+            }
+        }
+    });
 
     let server = tokio::spawn(async {
         let app = Router::new()
             .route("/http", post(create_http_check))
+            .route("/http", delete(delete_http_check))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(DefaultMakeSpan::new().include_headers(true))
@@ -90,8 +103,9 @@ async fn start() -> Result<(), anyhow::Error> {
         axum::serve(listener, app).await.unwrap();
     });
     
-    handle.await?;
+    scheduler.await?;
     server.await?;
+    notifier.await?;
 
     Ok(())
 }

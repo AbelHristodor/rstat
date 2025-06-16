@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use futures::StreamExt;
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, Mutex};
 use tokio_util::time::delay_queue;
 use tracing::{debug, error, info, warn};
 
@@ -13,15 +13,17 @@ use crate::{
 pub struct Scheduler {
     pub queue: tokio_util::time::DelayQueue<uuid::Uuid>,
     pub db: sqlx::PgPool,
+    pub result_tx: mpsc::Sender<String>,
 
     entries: Arc<Mutex<HashMap<uuid::Uuid, (HealthCheckRequest, delay_queue::Key)>>>,
 }
 
 impl Scheduler {
-    pub fn new(db: sqlx::PgPool) -> Self {
+    pub fn new(db: sqlx::PgPool, result_tx: mpsc::Sender<String>) -> Self {
         Self {
             queue: tokio_util::time::DelayQueue::new(),
             entries: Arc::new(Mutex::new(HashMap::new())),
+            result_tx,
             db,
         }
     }
@@ -54,15 +56,15 @@ impl Scheduler {
             None
         }
     }
-
+    
     async fn refresh_all(&mut self) {
         let entries = self.entries.lock().await.clone();
         self.queue.clear();
 
-        for (id, (request, _)) in entries {
+        for (id, (request, _)) in &entries {
             let timeout = request.service.interval;
-            let key = self.queue.insert(id, timeout);
-            self.entries.lock().await.insert(id, (request.clone(), key));
+            let key = self.queue.insert(*id, timeout);
+            self.entries.lock().await.insert(*id, (request.clone(), key));
         }
     }
 
@@ -107,6 +109,7 @@ impl Scheduler {
                                             id, err
                                         ),
                                     }
+                                    let _ = self.result_tx.send("Hello".into()).await;
                                 }
                                 Err(err) => {
                                     error!("Healthcheck failed with error: {}", err);

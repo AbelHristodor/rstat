@@ -42,7 +42,7 @@ pub async fn get(pool: &sqlx::PgPool, id: String) -> Result<Service, anyhow::Err
     let uuid = uuid::Uuid::parse_str(&id)?;
     let record = sqlx::query!(
         "SELECT id, name, kind, interval, config FROM services WHERE id = $1",
-        id
+        uuid
     )
     .fetch_one(pool)
     .await?;
