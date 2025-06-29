@@ -5,6 +5,7 @@ use http::{
     header::{CONTENT_TYPE, HOST, USER_AGENT},
 };
 use uuid::Uuid;
+use chrono::Utc;
 
 use crate::healthcheck::{self, Kind};
 
@@ -49,30 +50,35 @@ pub fn fixtures() -> Result<Vec<Service>, anyhow::Error> {
         .body("hello".into())
         .timeout(10);
     
+    let now = Utc::now();
     let services = vec![
         Service {
             id: Uuid::new_v4(),
             name: String::from("Service A"),
             kind: Kind::HTTP(http1),
             interval: Duration::new(30, 0), // 30 seconds
+            next_run: now,
         },
         Service {
             id: Uuid::new_v4(),
             name: String::from("Service B"),
             kind: Kind::HTTP(http2),
             interval: Duration::new(60, 0), // 1 minute
+            next_run: now,
         },
         Service {
             id: Uuid::new_v4(),
             name: String::from("Service C"),
             kind: Kind::HTTP(http3),
             interval: Duration::new(120, 0), // 2 minutes
+            next_run: now,
         },
         Service {
             id: Uuid::new_v4(),
             name: String::from("Service D"),
             kind: Kind::HTTP(http4),
             interval: Duration::new(10, 0), // 10 seconds
+            next_run: now,
         },
     ];
     Ok(services)

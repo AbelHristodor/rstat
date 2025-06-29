@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use uuid::Uuid;
+use chrono::{DateTime, Utc};
 
 use crate::healthcheck::Kind;
 
@@ -19,6 +20,8 @@ pub struct Service {
     pub kind: Kind,
     /// The interval at which the service should be checked for health.
     pub interval: Duration,
+    /// The next time this service should be checked.
+    pub next_run: DateTime<Utc>,
 }
 
 impl PartialEq for Service {

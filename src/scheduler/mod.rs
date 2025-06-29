@@ -1,133 +1,119 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::time::Duration;
 
-use futures::StreamExt;
-use tokio::sync::{mpsc, Mutex};
-use tokio_util::time::delay_queue;
-use tracing::{debug, error, info, warn};
+use tokio::sync::mpsc;
+use tokio::task;
+use futures::future::join_all;
+use tracing::{debug, error, info};
+use chrono::Utc;
 
 use crate::{
-    healthcheck::{self, HealthCheckRequest, HealthChecker},
+    healthcheck::{self, HealthChecker},
     service::{self, Service},
 };
 
+#[derive(Clone)]
 pub struct Scheduler {
-    pub queue: tokio_util::time::DelayQueue<uuid::Uuid>,
     pub db: sqlx::PgPool,
     pub result_tx: mpsc::Sender<String>,
-
-    entries: Arc<Mutex<HashMap<uuid::Uuid, (HealthCheckRequest, delay_queue::Key)>>>,
 }
 
 impl Scheduler {
     pub fn new(db: sqlx::PgPool, result_tx: mpsc::Sender<String>) -> Self {
         Self {
-            queue: tokio_util::time::DelayQueue::new(),
-            entries: Arc::new(Mutex::new(HashMap::new())),
-            result_tx,
             db,
+            result_tx,
         }
     }
 
-    pub async fn init(mut self) -> Result<Self, anyhow::Error> {
-        let services = service::db::all(&self.db).await?;
-        self.enqueue_all(services).await;
+    pub async fn init(self) -> Result<Self, anyhow::Error> {
+        info!("Scheduler initialized");
         Ok(self)
     }
 
-    async fn enqueue_all(&mut self, services: Vec<Service>) {
-        for svc in services {
-            let request = HealthCheckRequest::new(svc.clone());
-            self.enqueue(request).await;
+    async fn get_due_services(&self) -> Result<Vec<Service>, anyhow::Error> {
+        let services = service::db::all(&self.db).await?;
+        let now = Utc::now();
+        
+        let due_services: Vec<Service> = services
+            .into_iter()
+            .filter(|service| service.next_run <= now)
+            .collect();
+        
+        Ok(due_services)
+    }
+
+    async fn run_healthcheck(&self, service: &Service) {
+        info!("Running healthcheck for service: {}", service.name);
+        
+        let healthcheck = match &service.kind {
+            crate::healthcheck::Kind::HTTP(httpchecker) => {
+                httpchecker.check().await
+            }
+            crate::healthcheck::Kind::TCP(tcpchecker) => {
+                tcpchecker.check().await
+            }
+        };
+
+        match healthcheck {
+            Ok(result) => {
+                debug!("Healthcheck successful for service: {}", service.name);
+                match healthcheck::db::result::create(
+                    &self.db,
+                    result,
+                    service.id,
+                )
+                .await
+                {
+                    Ok(id) => {
+                        info!("Healthcheck result created with id: {}", id)
+                    }
+                    Err(err) => error!(
+                        "Cannot save healthcheck result to db for service {} with err: {}",
+                        service.name, err
+                    ),
+                }
+                let _ = self.result_tx.send(format!("Healthcheck completed for {}", service.name)).await;
+            }
+            Err(err) => {
+                error!("Healthcheck failed for service {} with error: {}", service.name, err);
+            }
+        }
+
+        // Update the next_run timestamp
+        let next_run = Utc::now() + chrono::Duration::from_std(service.interval).unwrap();
+        if let Err(err) = service::db::update_next_run(&self.db, service.id, next_run).await {
+            error!("Failed to update next_run for service {}: {}", service.name, err);
         }
     }
 
-    async fn enqueue(&mut self, request: HealthCheckRequest) {
-        let timeout = request.service.interval;
-        let id = request.service.id;
-        let key = self.queue.insert(id, timeout);
-        self.entries.lock().await.insert(id, (request, key));
-        info!("Enqueued service {}", id);
-    }
-
-    async fn get(&self, id: uuid::Uuid) -> Option<HealthCheckRequest> {
-        if let Some((request, _)) = self.entries.lock().await.get(&id) {
-            Some(request.clone())
-        } else {
-            None
-        }
-    }
-    
-    async fn refresh_all(&mut self) {
-        let entries = self.entries.lock().await.clone();
-        self.queue.clear();
-
-        for (id, (request, _)) in &entries {
-            let timeout = request.service.interval;
-            let key = self.queue.insert(*id, timeout);
-            self.entries.lock().await.insert(*id, (request.clone(), key));
-        }
-    }
-
-    pub async fn start(&mut self) {
-        info!("Starting scheduler");
+    pub async fn start(&self) {
+        info!("Starting scheduler with periodic approach");
+        
         loop {
-            match self.queue.next().await {
-                Some(_request) => {
-                    debug!("Processing request");
-                    // Process the request
-                    let id = _request.into_inner();
+            match self.get_due_services().await {
+                Ok(due_services) => {
+                    if !due_services.is_empty() {
+                        info!("Found {} services due for healthcheck", due_services.len());
+                        
+                        let tasks: Vec<_> = due_services.into_iter().map(|service| {
+                            let scheduler = self.clone();
+                            task::spawn(async move {
+                                scheduler.run_healthcheck(&service).await;
+                            })
+                        }).collect();
 
-                    match self.get(id).await {
-                        Some(request) => {
-                            // we need to enqueue it again and process it
-                            let req = request.clone();
-
-                            // Then we run it
-                            let healtcheck = match req.service.kind {
-                                crate::healthcheck::Kind::HTTP(httpchecker) => {
-                                    httpchecker.check().await
-                                }
-                                crate::healthcheck::Kind::TCP(tcpchecker) => {
-                                    tcpchecker.check().await
-                                }
-                            };
-                            match healtcheck {
-                                Ok(result) => {
-                                    debug!("Healthcheck successful for id: {}", result.id);
-                                    match healthcheck::db::result::create(
-                                        &self.db,
-                                        result,
-                                        req.service.id,
-                                    )
-                                    .await
-                                    {
-                                        Ok(id) => {
-                                            info!("Healthcheck result created with id: {}", id)
-                                        }
-                                        Err(err) => error!(
-                                            "Cannot save healthcheck result to db with id: {} and err: {}",
-                                            id, err
-                                        ),
-                                    }
-                                    let _ = self.result_tx.send("Hello".into()).await;
-                                }
-                                Err(err) => {
-                                    error!("Healthcheck failed with error: {}", err);
-                                }
-                            };
-                            self.enqueue(request).await;
-                        }
-                        None => {
-                            warn!("Mismatch between queue and entries! This should not happen!")
-                        },
+                        join_all(tasks).await;
+                    } else {
+                        debug!("No services due for healthcheck");
                     }
                 }
-                None => {
-                    info!("No health check request found");
-                    tokio::time::sleep(Duration::from_secs(2)).await;
-                    self.refresh_all().await;
+                Err(err) => {
+                    error!("Failed to get due services: {}", err);
                 }
             }
+            
+            // Wait 2 seconds before next check
+            tokio::time::sleep(Duration::from_secs(2)).await;
         }
     }
 }

@@ -1,13 +1,14 @@
 use std::time::Duration;
 
 use tracing::{info, warn};
+use chrono::{DateTime, Utc};
 
 use crate::healthcheck::{self, Kind};
 
 use super::Service;
 
 pub async fn all(pool: &sqlx::PgPool) -> Result<Vec<Service>, sqlx::Error> {
-    let rows = sqlx::query!("SELECT id, name, kind, interval, config FROM services")
+    let rows = sqlx::query!("SELECT id, name, kind, interval, config, next_run FROM services")
         .fetch_all(pool)
         .await?;
 
@@ -31,6 +32,7 @@ pub async fn all(pool: &sqlx::PgPool) -> Result<Vec<Service>, sqlx::Error> {
                 name: row.name.clone(),
                 kind,
                 interval: Duration::from_secs(row.interval as u64),
+                next_run: row.next_run.and_utc(),
             }
         })
         .collect();
@@ -41,7 +43,7 @@ pub async fn all(pool: &sqlx::PgPool) -> Result<Vec<Service>, sqlx::Error> {
 pub async fn get(pool: &sqlx::PgPool, id: String) -> Result<Service, anyhow::Error> {
     let uuid = uuid::Uuid::parse_str(&id)?;
     let record = sqlx::query!(
-        "SELECT id, name, kind, interval, config FROM services WHERE id = $1",
+        "SELECT id, name, kind, interval, config, next_run FROM services WHERE id = $1",
         uuid
     )
     .fetch_one(pool)
@@ -61,6 +63,7 @@ pub async fn get(pool: &sqlx::PgPool, id: String) -> Result<Service, anyhow::Err
         name: record.name,
         kind,
         interval: Duration::from_secs(record.interval as u64),
+        next_run: record.next_run.and_utc(),
     };
 
     Ok(svc)
@@ -119,6 +122,23 @@ pub async fn delete(pool: &sqlx::PgPool, id: String) -> Result<(), anyhow::Error
     sqlx::query!("DELETE FROM services WHERE id = $1", uuid)
         .execute(pool)
         .await?;
+
+    Ok(())
+}
+
+pub async fn update_next_run(
+    pool: &sqlx::PgPool,
+    service_id: uuid::Uuid,
+    next_run: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+
+    sqlx::query!(
+        "UPDATE services SET next_run = $1 WHERE id = $2",
+        next_run.naive_utc(),
+        service_id
+    )
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

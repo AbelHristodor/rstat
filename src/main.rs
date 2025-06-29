@@ -1,10 +1,9 @@
-use std::{env, path::Path, sync::Arc, time::Duration};
+use std::{env, path::Path, time::Duration};
 
-use api::{CreateServiceRequest, DeleteServiceRequest, GetServiceRequest};
+use api::{CreateServiceRequest, DeleteServiceRequest};
 use axum::{extract::State, routing::{delete, post}, Json, Router};
 use clap::Parser;
 use http::StatusCode;
-use service::Service;
 use sqlx::migrate::Migrator;
 use tokio::sync::mpsc;
 use tower_http::{
@@ -66,7 +65,7 @@ async fn start() -> Result<(), anyhow::Error> {
     
     let cloned_tx = result_tx.clone();
     let scheduler = tokio::spawn(async {
-        let mut scheduler = scheduler::Scheduler::new(cloned_db, cloned_tx)
+        let scheduler = scheduler::Scheduler::new(cloned_db, cloned_tx)
             .init()
             .await
             .expect("Failed to initialize scheduler");
