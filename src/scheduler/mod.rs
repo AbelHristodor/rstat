@@ -11,6 +11,18 @@ use crate::{
     service::{self, Service},
 };
 
+pub async fn start_scheduler(db: sqlx::PgPool, result_tx: mpsc::Sender<String>) -> Result<(), anyhow::Error> {
+    let scheduler = Scheduler::new(db, result_tx)
+        .init()
+        .await
+        .expect("Failed to initialize scheduler");
+    
+    info!("Starting scheduler");
+    scheduler.start().await;
+    
+    Ok(())
+} 
+
 #[derive(Clone)]
 pub struct Scheduler {
     pub db: sqlx::PgPool,

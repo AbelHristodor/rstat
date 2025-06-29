@@ -1,30 +1,20 @@
-use std::{env, path::Path, time::Duration};
+use std::{env, path::Path};
 
-use api::{CreateServiceRequest, DeleteServiceRequest};
-use axum::{extract::State, routing::{delete, post}, Json, Router};
 use clap::Parser;
-use http::StatusCode;
 use sqlx::migrate::Migrator;
 use tokio::sync::mpsc;
-use tower_http::{
-    LatencyUnit,
-    trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
-};
-use tracing::{error, info, Level};
+use tracing::info;
 
 use tracing_subscriber::EnvFilter;
 
 mod api;
 mod cli;
 mod healthcheck;
+mod notifier;
 mod scheduler;
+mod server;
 mod service;
 mod utils;
-
-#[derive(Clone)]
-struct AppState {
-    pool: sqlx::PgPool,
-}
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -57,110 +47,44 @@ async fn start() -> Result<(), anyhow::Error> {
         .run(&pool)
         .await?;
 
-    let cloned_db = pool.clone();
+    let (result_tx, result_rx) = mpsc::channel(100);
     
-    let state = AppState { pool: pool.clone() };
+    // Create app state
+    let state = server::AppState { pool: pool.clone() };
     
-    let (result_tx, mut result_rx) = mpsc::channel(100);
-    
-    let cloned_tx = result_tx.clone();
-    let scheduler = tokio::spawn(async {
-        let scheduler = scheduler::Scheduler::new(cloned_db, cloned_tx)
-            .init()
-            .await
-            .expect("Failed to initialize scheduler");
-        
-        scheduler.start().await;
-    });
-    
-    let notifier = tokio::spawn({
+    // Start scheduler
+    let scheduler_handle = tokio::spawn({
+        let cloned_db = pool.clone();
+        let cloned_tx = result_tx.clone();
         async move {
-            while let Some(result) = result_rx.recv().await {
-                info!("Received result: {:?}", result);
-            }
+            scheduler::start_scheduler(cloned_db, cloned_tx).await
         }
     });
+    
+    // Start notifier
+    let notifier_handle = tokio::spawn(async move {
+        notifier::start_notifier(result_rx).await;
+    });
 
-    let server = tokio::spawn(async {
-        let app = Router::new()
-            .route("/http", post(create_http_check))
-            .route("/http", delete(delete_http_check))
-            .layer(
-                TraceLayer::new_for_http()
-                    .make_span_with(DefaultMakeSpan::new().include_headers(true))
-                    .on_request(DefaultOnRequest::new().level(Level::INFO))
-                    .on_response(
-                        DefaultOnResponse::new()
-                            .level(Level::INFO)
-                            .latency_unit(LatencyUnit::Micros),
-                    ),
-            )
-            .with_state(state);
-
-        let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-        info!("Server started on {}", listener.local_addr().unwrap());
-        axum::serve(listener, app).await.unwrap();
+    // Start server
+    let server_handle = tokio::spawn(async move {
+        let app = server::create_server(state).await;
+        server::start_server(app).await
     });
     
-    scheduler.await?;
-    server.await?;
-    notifier.await?;
+    // Wait for all components to complete
+    let (scheduler_result, server_result, notifier_result) = tokio::join!(
+        scheduler_handle,
+        server_handle,
+        notifier_handle
+    );
+    
+    scheduler_result??;
+    server_result??;
+    notifier_result?;
 
     Ok(())
 }
-
-async fn create_http_check(
-    State(state): State<AppState>,
-    Json(payload): Json<CreateServiceRequest>,
-) -> (StatusCode, Json<String>) {
-    
-    let svc = service::db::create(
-        &state.pool,
-        &payload.name,
-        payload.kind,
-        Duration::from_secs(payload.interval),
-    ).await;
-    
-    match svc {
-        Ok(id) => (StatusCode::CREATED, Json(id.to_string())),
-        Err(err) => (StatusCode::BAD_REQUEST, Json(err.to_string())),
-    }
-}
-
-async fn delete_http_check(
-    State(state): State<AppState>,
-    Json(payload): Json<DeleteServiceRequest>,
-) -> StatusCode {
-    
-    let svc = service::db::delete(
-        &state.pool,
-        payload.id,
-    ).await;
-    
-    match svc {
-        Ok(()) => StatusCode::OK,
-        Err(err) => {
-            error!("Failed to delete service: {}", err);
-            StatusCode::BAD_REQUEST
-        }
-    }
-}
-
-// async fn get_http_check(
-//     State(state): State<AppState>,
-//     Json(payload): Json<GetServiceRequest>,
-// ) -> (StatusCode, Json<Service>) {
-    
-//     let svc = service::db::get(
-//         &state.pool,
-//         payload.id,
-//     ).await;
-    
-//     match svc {
-//         Ok(svc) => (StatusCode::OK, Json(svc)),
-//         Err(err) => (StatusCode::BAD_REQUEST, Json()),
-//     }
-// }
 
 async fn seed() -> Result<(), anyhow::Error> {
     let database_url = env::var("DATABASE_URL").expect("Expected DATABASE_URL in the environment");
