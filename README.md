@@ -27,11 +27,10 @@ Rstat is a modern, high-performance healthcheck monitoring system built with **R
 ### 🎨 Frontend (Next.js)
 - **🎯 Modern UI**: Beautiful, responsive dashboard built with Tailwind CSS
 - **📱 Mobile First**: Optimized for all device sizes
-- **🌙 Dark Mode**: Automatic theme switching with next-themes
+- **🌙 Dark Mode**: Automatic theme switching
 - **📊 Interactive Charts**: Real-time performance visualization with Recharts
 - **⚡ Fast Loading**: Optimized with Next.js 15 and Turbopack
 - **🔍 Real-time Updates**: Live status updates without page refresh
-- **🎨 Radix UI**: Accessible, customizable components
 
 ## 🏗️ Architecture
 
@@ -84,6 +83,8 @@ The application is structured as a Rust workspace with the following crates:
   - Application entry point
   - Component orchestration
   - Server startup logic
+
+- **`rstat-config`** - YAML configuration loader for services
 
 ## Benefits of This Structure
 
@@ -273,7 +274,6 @@ RUST_LOG=rstat=info,tower_http=debug
 ## 🎨 UI Components
 
 The frontend uses a modern component library built with:
-- **Radix UI**: Accessible, unstyled components
 - **Tailwind CSS**: Utility-first CSS framework
 - **Lucide React**: Beautiful, customizable icons
 - **Recharts**: Responsive charting library
@@ -324,3 +324,51 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Made with ❤️ by [Abel Hristodor](https://github.com/abelhristodor)**
 
 *Star this repository if you found it helpful! ⭐*
+
+## ⚡ YAML Service Configuration (NEW)
+
+You can now define your services in a YAML file and have them created automatically on startup or via CLI.
+
+### Example YAML (`config/services.yaml`):
+```yaml
+- name: "API Gateway"
+  kind:
+    type: http
+    url: "https://api.example.com/health"
+    method: "GET"
+    timeout: 5
+    max_retries: 3
+  interval: 30
+
+- name: "Database Cluster"
+  kind:
+    type: tcp
+    host: "db.example.com"
+    port: 5432
+    timeout: 5
+    max_retries: 3
+  interval: 60
+```
+
+### How it works
+- On startup, the backend will look for a YAML file in `config/services.yaml` or as specified by the `RSTAT_CONFIG_PATH` environment variable.
+- All services defined in the file will be created in the database if they do not already exist.
+
+### Manual Loading
+You can also load services from YAML at any time:
+
+```bash
+# Load from a specific file
+make config-load FILE=config/services.yaml
+
+# Load from a directory of YAML files
+make config-load-dir DIR=config
+
+# Load from default locations (config/services.yaml, etc.)
+make config-load-default
+```
+
+Or use the CLI directly:
+```bash
+cargo run -p rstat-server -- config load --file config/services.yaml
+```

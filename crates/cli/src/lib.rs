@@ -12,10 +12,36 @@ pub struct Cli {
 pub enum Commands {
     Start,
     Seed,
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
+    },
     Metrics {
         #[command(subcommand)]
         command: MetricsCommands,
     },
+}
+
+#[derive(Subcommand)]
+pub enum ConfigCommands {
+    /// Load services from a YAML file
+    Load {
+        /// Path to the YAML configuration file
+        #[arg(short, long)]
+        file: String,
+        
+        /// Skip duplicate services (don't create if service with same name exists)
+        #[arg(short, long, default_value = "true")]
+        skip_duplicates: bool,
+    },
+    /// Load services from a directory containing YAML files
+    LoadDir {
+        /// Path to the directory containing YAML files
+        #[arg(short, long)]
+        dir: String,
+    },
+    /// Load services from default configuration locations
+    LoadDefault,
 }
 
 #[derive(Subcommand)]

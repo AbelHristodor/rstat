@@ -1,0 +1,71 @@
+# Example services configuration file
+# This file defines services that will be created in the database on startup
+
+- name: "API Gateway"
+  kind:
+    type: http
+    url: "https://api.example.com/health"
+    method: "GET"
+    timeout: 5
+    max_retries: 3
+  interval: 30
+
+- name: "Database Cluster"
+  kind:
+    type: tcp
+    host: "db.example.com"
+    port: 5432
+    timeout: 5
+    max_retries: 3
+  interval: 60
+
+- name: "Authentication Service"
+  kind:
+    type: http
+    url: "https://auth.example.com/health"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer test-token"
+    body: '{"check": "health"}'
+    timeout: 10
+    max_retries: 2
+  interval: 45
+
+- name: "Redis Cache"
+  kind:
+    type: tcp
+    host: "redis.example.com"
+    port: 6379
+    timeout: 3
+    max_retries: 2
+  interval: 30
+
+- name: "File Storage Service"
+  kind:
+    type: http
+    url: "https://storage.example.com/health"
+    method: "GET"
+    timeout: 15
+    max_retries: 1
+  interval: 120
+
+- name: "CDN Edge Server"
+  kind:
+    type: tcp
+    host: "cdn.example.com"
+    port: 443
+    timeout: 5
+    max_retries: 3
+  interval: 30
+
+- name: "Email Service"
+  kind:
+    type: http
+    url: "https://email.example.com/health"
+    method: "GET"
+    headers:
+      User-Agent: "RStat-HealthCheck/1.0"
+    timeout: 8
+    max_retries: 2
+  interval: 90 

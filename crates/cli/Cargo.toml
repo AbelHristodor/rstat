@@ -8,6 +8,7 @@ rstat-core = { path = "../core" }
 rstat-service = { path = "../service" }
 rstat-metrics = { path = "../metrics" }
 rstat-scheduler = { path = "../scheduler" }
+rstat-config = { path = "../config" }
 anyhow = { workspace = true }
 clap = { workspace = true }
 sqlx = { workspace = true }

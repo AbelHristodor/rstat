@@ -38,6 +38,15 @@ run: migrate ## Run the application (server)
 seed: migrate ## Populate the database with initial data
 	cargo run -p rstat-server -- seed
 
+config-load: migrate ## Load services from a YAML file (set FILE=path/to/file.yaml)
+	cargo run -p rstat-server -- config load --file $${FILE:-config/services.yaml}
+
+config-load-dir: migrate ## Load services from a directory of YAML files (set DIR=path/to/dir)
+	cargo run -p rstat-server -- config load-dir --dir $${DIR:-config}
+
+config-load-default: migrate ## Load services from default configuration locations
+	cargo run -p rstat-server -- config load-default
+
 metrics-calculate: migrate ## Calculate metrics for all services
 	cargo run -p rstat-server -- metrics calculate
 

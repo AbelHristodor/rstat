@@ -12,6 +12,7 @@ rstat-scheduler = { path = "../scheduler" }
 rstat-api = { path = "../api" }
 rstat-cli = { path = "../cli" }
 rstat-seeder = { path = "../seeder" }
+rstat-config = { path = "../config" }
 anyhow = { workspace = true }
 axum = { workspace = true }
 clap = { workspace = true }

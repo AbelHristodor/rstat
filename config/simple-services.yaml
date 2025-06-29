@@ -1,0 +1,22 @@
+# Simple services configuration
+# Minimal configuration example
+
+- name: "Web Server"
+  kind:
+    type: http
+    url: "http://localhost:8080/health"
+  interval: 30
+
+- name: "Database"
+  kind:
+    type: tcp
+    host: "localhost"
+    port: 5432
+  interval: 60
+
+- name: "Redis"
+  kind:
+    type: tcp
+    host: "localhost"
+    port: 6379
+  interval: 30 
