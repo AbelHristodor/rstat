@@ -1,3 +1,48 @@
+// API base URL - should be configurable via environment variables
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Types that match the Rust backend
+export interface Service {
+  id: string;
+  name: string;
+  kind: {
+    HTTP?: any;
+    TCP?: any;
+  };
+  interval: {
+    secs: number;
+    nanos: number;
+  };
+  next_run: string; // ISO datetime string
+}
+
+export interface ServiceMetric {
+  id: string;
+  service_id: string;
+  date: string; // YYYY-MM-DD format
+  uptime_percentage: number;
+  average_latency_ms: number;
+  total_checks: number;
+  successful_checks: number;
+  created_at: string; // ISO datetime string
+  updated_at: string; // ISO datetime string
+}
+
+export interface ServiceMetricsSummary {
+  service_id: string;
+  current_uptime: number;
+  current_latency_ms: number;
+  average_latency_ms: number;
+  uptime_data: UptimeDataPoint[];
+}
+
+export interface UptimeDataPoint {
+  date: string; // YYYY-MM-DD format
+  uptime_percentage: number;
+  latency_ms: number;
+}
+
+// Frontend-specific types for compatibility
 export interface ServiceStatus {
   id: string;
   name: string;
@@ -22,120 +67,145 @@ export interface ServiceMetrics {
   averageLatency: number;
 }
 
-// Mock data for services
-const mockServices: ServiceStatus[] = [
-  {
-    id: 'api-gateway',
-    name: 'API Gateway',
-    status: 'operational',
-    uptime: 99.98,
-    latency: 45,
-    lastUpdated: new Date().toISOString(),
-    description: 'Main API gateway service'
-  },
-  {
-    id: 'database',
-    name: 'Database',
-    status: 'operational',
-    uptime: 99.95,
-    latency: 12,
-    lastUpdated: new Date().toISOString(),
-    description: 'Primary database cluster'
-  },
-  {
-    id: 'auth-service',
-    name: 'Authentication Service',
-    status: 'operational',
-    uptime: 99.99,
-    latency: 28,
-    lastUpdated: new Date().toISOString(),
-    description: 'User authentication and authorization'
-  },
-  {
-    id: 'file-storage',
-    name: 'File Storage',
-    status: 'degraded',
-    uptime: 98.5,
-    latency: 150,
-    lastUpdated: new Date().toISOString(),
-    description: 'File upload and storage service'
-  },
-  {
-    id: 'email-service',
-    name: 'Email Service',
-    status: 'operational',
-    uptime: 99.8,
-    latency: 85,
-    lastUpdated: new Date().toISOString(),
-    description: 'Email delivery and notifications'
-  },
-  {
-    id: 'cdn',
-    name: 'CDN',
-    status: 'operational',
-    uptime: 99.99,
-    latency: 8,
-    lastUpdated: new Date().toISOString(),
-    description: 'Content delivery network'
-  }
-];
-
-// Generate mock uptime data for the last 30 days
-function generateMockUptimeData(days: number = 30): UptimeData[] {
-  const data: UptimeData[] = [];
-  const baseUptime = 99.5;
-  const baseLatency = 50;
-  
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    
-    // Add some realistic variation
-    const uptimeVariation = (Math.random() - 0.5) * 0.5; // ±0.25%
-    const latencyVariation = (Math.random() - 0.5) * 20; // ±10ms
-    
-    data.push({
-      date: date.toISOString().split('T')[0],
-      uptime: Math.max(95, Math.min(100, baseUptime + uptimeVariation)),
-      latency: Math.max(5, baseLatency + latencyVariation)
-    });
-  }
-  
-  return data;
+// Helper function to determine service status based on uptime
+function getServiceStatus(uptime: number): 'operational' | 'degraded' | 'outage' | 'maintenance' {
+  if (uptime >= 99.9) return 'operational';
+  if (uptime >= 95.0) return 'degraded';
+  if (uptime >= 90.0) return 'maintenance';
+  return 'outage';
 }
 
-// Mock API functions
-export async function fetchServices(): Promise<ServiceStatus[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return mockServices;
-}
-
-export async function fetchServiceMetrics(serviceId: string, days: number = 30): Promise<ServiceMetrics> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 200));
+// Helper function to convert Service to ServiceStatus
+function convertServiceToStatus(service: Service, metrics?: ServiceMetricsSummary): ServiceStatus {
+  const currentUptime = metrics?.current_uptime || 0;
+  const currentLatency = metrics?.current_latency_ms || 0;
   
-  const service = mockServices.find(s => s.id === serviceId);
-  if (!service) {
-    throw new Error(`Service ${serviceId} not found`);
-  }
+  // Extract the kind type (HTTP or TCP)
+  const kindType = service.kind.HTTP ? 'HTTP' : service.kind.TCP ? 'TCP' : 'Unknown';
   
-  const uptimeData = generateMockUptimeData(days);
-  const averageLatency = uptimeData.reduce((sum, data) => sum + data.latency, 0) / uptimeData.length;
+  // Extract interval in seconds
+  const intervalSeconds = service.interval.secs;
   
   return {
-    serviceId,
-    uptimeData,
-    currentUptime: service.uptime,
-    currentLatency: service.latency,
-    averageLatency: Math.round(averageLatency)
+    id: service.id,
+    name: service.name,
+    status: getServiceStatus(currentUptime),
+    uptime: currentUptime,
+    latency: currentLatency,
+    lastUpdated: service.next_run,
+    description: `${kindType} service monitored every ${intervalSeconds} seconds`
   };
 }
 
+// Helper function to convert ServiceMetricsSummary to ServiceMetrics
+function convertMetricsSummaryToServiceMetrics(summary: ServiceMetricsSummary): ServiceMetrics {
+  return {
+    serviceId: summary.service_id,
+    uptimeData: summary.uptime_data.map(point => ({
+      date: point.date,
+      uptime: point.uptime_percentage,
+      latency: point.latency_ms
+    })),
+    currentUptime: summary.current_uptime,
+    currentLatency: summary.current_latency_ms,
+    averageLatency: summary.average_latency_ms
+  };
+}
+
+// API functions
+export async function fetchServices(): Promise<ServiceStatus[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/http`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const services: Service[] = await response.json();
+    
+    // For each service, fetch its metrics summary to get current status
+    const servicesWithMetrics = await Promise.all(
+      services.map(async (service) => {
+        try {
+          const metricsResponse = await fetch(`${API_BASE_URL}/metrics/${service.id}/summary`);
+          if (metricsResponse.ok) {
+            const metrics: ServiceMetricsSummary = await metricsResponse.json();
+            return convertServiceToStatus(service, metrics);
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch metrics for service ${service.id}:`, error);
+        }
+        return convertServiceToStatus(service);
+      })
+    );
+    
+    return servicesWithMetrics;
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    throw error;
+  }
+}
+
+export async function fetchServiceMetrics(serviceId: string, days: number = 30): Promise<ServiceMetrics> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/metrics/${serviceId}/summary?days=${days}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const summary: ServiceMetricsSummary = await response.json();
+    return convertMetricsSummaryToServiceMetrics(summary);
+  } catch (error) {
+    console.error(`Error fetching metrics for service ${serviceId}:`, error);
+    throw error;
+  }
+}
+
 export async function fetchAllServiceMetrics(days: number = 30): Promise<ServiceMetrics[]> {
-  const services = await fetchServices();
-  const metrics = await Promise.all(
-    services.map(service => fetchServiceMetrics(service.id, days))
-  );
-  return metrics;
-} 
+  try {
+    const services = await fetchServices();
+    const metrics = await Promise.all(
+      services.map(async (service) => {
+        try {
+          return await fetchServiceMetrics(service.id, days);
+        } catch (error) {
+          console.warn(`Failed to fetch metrics for service ${service.id}:`, error);
+          // Return empty metrics if fetch fails
+          return {
+            serviceId: service.id,
+            uptimeData: [],
+            currentUptime: 0,
+            currentLatency: 0,
+            averageLatency: 0
+          };
+        }
+      })
+    );
+    return metrics;
+  } catch (error) {
+    console.error('Error fetching all service metrics:', error);
+    throw error;
+  }
+}
+
+// Additional API functions for direct backend access
+export async function fetchRawServices(): Promise<Service[]> {
+  const response = await fetch(`${API_BASE_URL}/http`);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchRawServiceMetrics(serviceId: string, days: number = 30): Promise<ServiceMetric[]> {
+  const response = await fetch(`${API_BASE_URL}/metrics/${serviceId}?days=${days}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchRawServiceMetricsSummary(serviceId: string, days: number = 30): Promise<ServiceMetricsSummary> {
+  const response = await fetch(`${API_BASE_URL}/metrics/${serviceId}/summary?days=${days}`);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+}

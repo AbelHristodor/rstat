@@ -33,6 +33,7 @@ async fn main() -> Result<(), anyhow::Error> {
     match &cli.command {
         cli::Commands::Seed => seed().await?,
         cli::Commands::Start => start().await?,
+        cli::Commands::Metrics { command } => handle_metrics_command(command).await?,
     }
 
     Ok(())
@@ -99,5 +100,48 @@ async fn seed() -> Result<(), anyhow::Error> {
     service::db::bulk_create(&pool, &svc).await?;
 
     info!("Seeding complete");
+    Ok(())
+}
+
+async fn handle_metrics_command(command: &cli::MetricsCommands) -> Result<(), anyhow::Error> {
+    let database_url = env::var("DATABASE_URL").expect("Expected DATABASE_URL in the environment");
+    let pool = sqlx::PgPool::connect(&database_url).await?;
+    
+    // Run migrations to ensure metrics table exists
+    Migrator::new(Path::new("migrations"))
+        .await?
+        .run(&pool)
+        .await?;
+
+    let calculator = service::metrics_calculator::MetricsCalculator::new(pool.clone());
+    let updater = scheduler::metrics_updater::MetricsUpdater::new(
+        calculator,
+        std::time::Duration::from_secs(300),
+    );
+
+    match command {
+        cli::MetricsCommands::Calculate => {
+            info!("Calculating metrics for all services...");
+            updater.update_all_metrics().await?;
+            info!("Metrics calculation complete");
+        }
+        cli::MetricsCommands::CalculateService { service_id } => {
+            let service_uuid = uuid::Uuid::parse_str(service_id)?;
+            info!("Calculating metrics for service {}...", service_id);
+            updater.update_service_metrics(service_uuid).await?;
+            info!("Metrics calculation complete for service {}", service_id);
+        }
+        cli::MetricsCommands::CalculateYesterday => {
+            info!("Calculating yesterday's metrics for all services...");
+            updater.calculate_yesterday_metrics().await?;
+            info!("Yesterday's metrics calculation complete");
+        }
+        cli::MetricsCommands::Cleanup { days } => {
+            info!("Cleaning up metrics older than {} days...", days);
+            let deleted_count = updater.cleanup_old_metrics(*days).await?;
+            info!("Cleaned up {} old metric records", deleted_count);
+        }
+    }
+
     Ok(())
 }

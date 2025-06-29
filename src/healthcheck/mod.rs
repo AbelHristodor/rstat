@@ -46,6 +46,7 @@ pub struct HealthCheckResult {
     pub code: u64,
     pub response_time: u128,
     pub message: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 /// Kind represents the type of healthcheck to perform.

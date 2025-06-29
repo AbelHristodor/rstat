@@ -109,9 +109,10 @@ impl HealthChecker for HTTPChecker {
                     return Ok(HealthCheckResult {
                         id: uuid::Uuid::new_v4(),
                         success,
-                        response_time: elapsed.as_millis(),
+                        response_time: elapsed.as_micros(),
                         code: r.status().as_u16() as u64,
                         message: r.text().await.unwrap_or_default(),
+                        created_at: chrono::Utc::now(),
                     });
                 }
                 Err(err) => {
@@ -134,6 +135,7 @@ impl HealthChecker for HTTPChecker {
             response_time: 0,
             code: 0,
             message: last_error.unwrap_or_default(),
+            created_at: chrono::Utc::now(),
         })
     }
 }

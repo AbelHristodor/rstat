@@ -21,6 +21,7 @@ impl HealthChecker for TCPChecker {
             response_time: 0,
             code: 0,
             message: "Hello World".to_string(),
+            created_at: chrono::Utc::now(),
         })
     }
 }

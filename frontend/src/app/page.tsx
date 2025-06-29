@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ServiceStatusCard } from "@/components/service-status-card";
@@ -16,11 +16,18 @@ export default function StatusPage() {
   const [selectedService, setSelectedService] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<string>('30');
 
+  // Update relative time every minute
+  const [timeUpdateTrigger, setTimeUpdateTrigger] = useState(0);
+  
   useEffect(() => {
-    loadData();
-  }, [timeRange]);
+    const interval = setInterval(() => {
+      setTimeUpdateTrigger(prev => prev + 1);
+    }, 60000); // Update every minute
 
-  const loadData = async () => {
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [servicesData, metricsData] = await Promise.all([
@@ -34,7 +41,11 @@ export default function StatusPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getOverallStatus = () => {
     if (services.length === 0) return 'unknown';
@@ -205,7 +216,7 @@ export default function StatusPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
             <p>© 2024 Status Dashboard. All rights reserved.</p>
-            <p>Last updated: {new Date().toLocaleString()}</p>
+            {/* <p>Last updated: } </p> */}
           </div>
         </div>
       </footer>

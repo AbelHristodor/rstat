@@ -8,6 +8,9 @@ use crate::healthcheck::Kind;
 
 pub mod db;
 pub mod fixtures;
+pub mod metrics;
+pub mod metrics_db;
+pub mod metrics_calculator;
 
 /// Service represents an entity that can be checked for health.
 #[derive(Clone, Debug, Serialize, Deserialize)]

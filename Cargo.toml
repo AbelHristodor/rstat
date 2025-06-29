@@ -19,11 +19,13 @@ http-serde = "2.1.1"
 reqwest = { version = "0.12.17", features = ["json"] }
 serde = "1.0.219"
 serde_json = "1.0.140"
-sqlx = { version = "0.8.6", features = ["json", "postgres", "runtime-tokio", "uuid", "chrono"] }
+sqlx = { version = "0.8.6", features = ["json", "postgres", "runtime-tokio", "uuid", "chrono", "bigdecimal"] }
 tokio = { version = "1.45.1", features = ["full"] }
 tokio-util = { version = "0.7.15", features = ["time"] }
-tower-http = { version = "0.6.6", features = ["trace"] }
+tower-http = { version = "0.6.6", features = ["trace", "cors"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 url = "2.5.4"
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
+bigdecimal = "0.4"
+num-traits = "0.2"

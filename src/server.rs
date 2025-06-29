@@ -1,11 +1,13 @@
 use std::time::Duration;
 
-use axum::{extract::State, routing::{get}, Json, Router, extract::Path};
+use axum::{extract::State, routing::{get}, Json, Router, extract::Path, extract::Query};
 use http::StatusCode;
 use sqlx::PgPool;
+use serde::Deserialize;
 use tower_http::{
     LatencyUnit,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    cors::{CorsLayer, Any},
 };
 use tracing::{error, info, Level};
 
@@ -16,7 +18,17 @@ pub struct AppState {
     pub pool: PgPool,
 }
 
+#[derive(Deserialize)]
+pub struct MetricsQuery {
+    days: Option<u32>,
+}
+
 pub async fn create_server(state: AppState) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     Router::new()
         .route("/http", 
             get(list_http_checks)
@@ -24,6 +36,10 @@ pub async fn create_server(state: AppState) -> Router {
                 .delete(delete_http_check)
         )
         .route("/http/checks/{id}", get(get_checks_for_service))
+        .route("/metrics", get(get_all_metrics))
+        .route("/metrics/{service_id}", get(get_service_metrics))
+        .route("/metrics/{service_id}/summary", get(get_service_metrics_summary))
+        .layer(cors)
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::new().include_headers(true))
@@ -104,6 +120,72 @@ async fn get_checks_for_service(
         Err(err) => {
             error!("Failed to get checks for service: {}", err);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]))
+        }
+    }
+}
+
+async fn get_all_metrics(
+    State(state): State<AppState>,
+) -> (StatusCode, Json<Vec<service::metrics::ServiceMetric>>) {
+    let end_date = chrono::Utc::now().date_naive();
+    let start_date = end_date - chrono::Duration::days(30);
+    
+    let metrics = service::metrics_db::get_all_metrics(
+        &state.pool,
+        start_date,
+        end_date,
+    ).await;
+    
+    match metrics {
+        Ok(metrics) => (StatusCode::OK, Json(metrics)),
+        Err(err) => {
+            error!("Failed to get all metrics: {}", err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]))
+        }
+    }
+}
+
+async fn get_service_metrics(
+    State(state): State<AppState>,
+    Path(service_id): Path<uuid::Uuid>,
+    Query(query): Query<MetricsQuery>,
+) -> (StatusCode, Json<Vec<service::metrics::ServiceMetric>>) {
+    let days = query.days.unwrap_or(30);
+    let metrics = service::metrics_db::get_metrics_for_service_last_days(
+        &state.pool,
+        service_id,
+        days,
+    ).await;
+    
+    match metrics {
+        Ok(metrics) => (StatusCode::OK, Json(metrics)),
+        Err(err) => {
+            error!("Failed to get metrics for service {}: {}", service_id, err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]))
+        }
+    }
+}
+
+async fn get_service_metrics_summary(
+    State(state): State<AppState>,
+    Path(service_id): Path<uuid::Uuid>,
+    Query(query): Query<MetricsQuery>,
+) -> (StatusCode, Json<service::metrics::ServiceMetricsSummary>) {
+    let days = query.days.unwrap_or(30);
+    let calculator = service::metrics_calculator::MetricsCalculator::new(state.pool.clone());
+    let summary = calculator.get_metrics_summary(service_id, Some(days)).await;
+    
+    match summary {
+        Ok(summary) => (StatusCode::OK, Json(summary)),
+        Err(err) => {
+            error!("Failed to get metrics summary for service {}: {}", service_id, err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(service::metrics::ServiceMetricsSummary {
+                service_id,
+                current_uptime: 0.0,
+                current_latency_ms: 0,
+                average_latency_ms: 0,
+                uptime_data: vec![],
+            }))
         }
     }
 }

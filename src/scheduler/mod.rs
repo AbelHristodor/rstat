@@ -3,7 +3,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::task;
 use futures::future::join_all;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use chrono::Utc;
 
 use crate::{
@@ -11,13 +11,23 @@ use crate::{
     service::{self, Service},
 };
 
+pub mod metrics_updater;
+
 pub async fn start_scheduler(db: sqlx::PgPool, result_tx: mpsc::Sender<String>) -> Result<(), anyhow::Error> {
-    let scheduler = Scheduler::new(db, result_tx)
+    let scheduler = Scheduler::new(db.clone(), result_tx)
         .init()
         .await
         .expect("Failed to initialize scheduler");
     
-    info!("Starting scheduler");
+    // Start metrics updater
+    let metrics_calculator = service::metrics_calculator::MetricsCalculator::new(db.clone());
+    let metrics_updater = metrics_updater::MetricsUpdater::new(
+        metrics_calculator,
+        Duration::from_secs(300), // Update metrics every 5 minutes
+    );
+    metrics_updater.start();
+    
+    info!("Starting scheduler and metrics updater");
     scheduler.start().await;
     
     Ok(())
@@ -84,10 +94,23 @@ impl Scheduler {
                         service.name, err
                     ),
                 }
+                
+                // Update metrics for this service after successful health check
+                let metrics_calculator = service::metrics_calculator::MetricsCalculator::new(self.db.clone());
+                if let Err(e) = metrics_calculator.calculate_today_metrics(service.id).await {
+                    warn!("Failed to update metrics for service {}: {}", service.name, e);
+                }
+                
                 let _ = self.result_tx.send(format!("Healthcheck completed for {}", service.name)).await;
             }
             Err(err) => {
                 error!("Healthcheck failed for service {} with error: {}", service.name, err);
+                
+                // Still update metrics even if health check failed
+                let metrics_calculator = service::metrics_calculator::MetricsCalculator::new(self.db.clone());
+                if let Err(e) = metrics_calculator.calculate_today_metrics(service.id).await {
+                    warn!("Failed to update metrics for service {}: {}", service.name, e);
+                }
             }
         }
 
