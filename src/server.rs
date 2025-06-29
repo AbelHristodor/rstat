@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use axum::{extract::State, routing::{get}, Json, Router};
+use axum::{extract::State, routing::{get}, Json, Router, extract::Path};
 use http::StatusCode;
 use sqlx::PgPool;
 use tower_http::{
@@ -9,7 +9,7 @@ use tower_http::{
 };
 use tracing::{error, info, Level};
 
-use crate::{api::{CreateServiceRequest, DeleteServiceRequest}, service};
+use crate::{api::{CreateServiceRequest, DeleteServiceRequest}, healthcheck, service};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -23,6 +23,7 @@ pub async fn create_server(state: AppState) -> Router {
                 .post(create_http_check)
                 .delete(delete_http_check)
         )
+        .route("/http/checks/{id}", get(get_checks_for_service))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::new().include_headers(true))
@@ -86,6 +87,20 @@ async fn list_http_checks(
         Ok(checks) => (StatusCode::OK, Json(checks)),
         Err(err) => {
             error!("Failed to list services: {}", err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]))
+        }
+    }
+}
+
+async fn get_checks_for_service(
+    State(state): State<AppState>,
+    Path(service_id): Path<uuid::Uuid>,
+) -> (StatusCode, Json<Vec<healthcheck::HealthCheckResult>>) {
+    let checks = healthcheck::db::result::get_by_service_id(&state.pool, service_id).await;
+    match checks {
+        Ok(checks) => (StatusCode::OK, Json(checks)),
+        Err(err) => {
+            error!("Failed to get checks for service: {}", err);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]))
         }
     }

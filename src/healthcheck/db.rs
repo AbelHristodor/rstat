@@ -20,4 +20,21 @@ pub mod result {
         Ok(created.id)
     }
     
+    pub async fn get_by_service_id(
+        pool: &sqlx::PgPool,
+        service_id: uuid::Uuid,
+    ) -> Result<Vec<HealthCheckResult>, sqlx::Error> {
+        let results = sqlx::query!(
+            "SELECT id, success, code, response_time, service_id, message FROM healthcheck_results WHERE service_id = $1",
+            service_id
+        ).fetch_all(pool).await?;
+
+        Ok(results.into_iter().map(|r| HealthCheckResult {
+            id: r.id,
+            success: r.success,
+            code: r.code.unwrap_or_default().parse::<u64>().unwrap_or_default(),
+            response_time: r.response_time.unwrap_or_default().try_into().unwrap_or_default(),
+            message: r.message.unwrap_or_default(),
+        }).collect())
+    }
 }

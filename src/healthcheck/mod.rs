@@ -39,7 +39,7 @@ impl HealthCheckRequest {
 }
 
 /// HealthCheckResult represents the result of a healthcheck.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct HealthCheckResult {
     pub id: Uuid,
     pub success: bool,
