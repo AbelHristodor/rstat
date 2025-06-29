@@ -15,7 +15,7 @@ pub fn generate_services() -> Vec<Service> {
             id: Uuid::new_v4(),
             name: "API Gateway".to_string(),
             kind: Kind::HTTP(HTTPChecker {
-                url: "http://localhost:8000/health".to_string(),
+                url: "http://localhost:5000/health".to_string(),
                 method: Some(Method::GET),
                 headers: None,
                 body: None,
@@ -40,7 +40,7 @@ pub fn generate_services() -> Vec<Service> {
             id: Uuid::new_v4(),
             name: "Authentication Service".to_string(),
             kind: Kind::HTTP(HTTPChecker {
-                url: "http://localhost:8000/health".to_string(),
+                url: "http://localhost:5000/health".to_string(),
                 method: Some(Method::GET),
                 headers: None,
                 body: None,
@@ -55,7 +55,7 @@ pub fn generate_services() -> Vec<Service> {
             id: Uuid::new_v4(),
             name: "File Storage Service".to_string(),
             kind: Kind::HTTP(HTTPChecker {
-                url: "http://localhost:8000/health".to_string(),
+                url: "http://localhost:5000/health".to_string(),
                 method: Some(Method::GET),
                 headers: None,
                 body: None,
@@ -70,12 +70,12 @@ pub fn generate_services() -> Vec<Service> {
             id: Uuid::new_v4(),
             name: "Email Service".to_string(),
             kind: Kind::HTTP(HTTPChecker {
-                url: "http://localhost:8000/health".to_string(),
+                url: "http://localhost:5000/health".to_string(),
                 method: Some(Method::GET),
                 headers: None,
                 body: None,
                 retries: Some(3),
-                timeout: Some(Duration::from_secs(8)),
+                timeout: Some(Duration::from_secs(5)),
                 client: reqwest::Client::default(),
             }),
             interval: Duration::from_secs(120),
@@ -105,7 +105,7 @@ pub fn generate_services() -> Vec<Service> {
             id: Uuid::new_v4(),
             name: "Load Balancer".to_string(),
             kind: Kind::HTTP(HTTPChecker {
-                url: "http://localhost:8000/health".to_string(),
+                url: "http://localhost:5000/health".to_string(),
                 method: Some(Method::GET),
                 headers: None,
                 body: None,

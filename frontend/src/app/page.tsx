@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ServiceStatusCard } from "@/components/service-status-card";
 import { ServiceChart } from "@/components/service-chart";
+import { ErrorPage } from "@/components/error-page";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { fetchServices, fetchAllServiceMetrics, ServiceStatus, ServiceMetrics } from "@/lib/api";
 import { Activity, CheckCircle, AlertTriangle, XCircle, Wrench, RefreshCw } from "lucide-react";
 
@@ -13,6 +15,7 @@ export default function StatusPage() {
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [metrics, setMetrics] = useState<ServiceMetrics[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<string>('30');
 
@@ -29,6 +32,7 @@ export default function StatusPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [servicesData, metricsData] = await Promise.all([
         fetchServices(),
@@ -38,6 +42,8 @@ export default function StatusPage() {
       setMetrics(metricsData);
     } catch (error) {
       console.error('Error loading data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -46,6 +52,17 @@ export default function StatusPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Show error page if there's an error
+  if (error) {
+    return (
+      <ErrorPage 
+        error={error} 
+        onRetry={loadData} 
+        isLoading={loading}
+      />
+    );
+  }
 
   const getOverallStatus = () => {
     if (services.length === 0) return 'unknown';
@@ -118,6 +135,7 @@ export default function StatusPage() {
                   {getStatusText(overallStatus)}
                 </span>
               </div>
+              <ThemeToggle />
               <button
                 onClick={loadData}
                 disabled={loading}
