@@ -34,8 +34,27 @@ help:
 ########################################################
 run: migrate ## Run the application
 	cargo run start
+
 seed: migrate ## Populate the database with initial data
 	cargo run seed
+
+check: ## Check the application
+	cargo check
+.PHONY: check
+
+build: ## Build the application
+	cargo build
+.PHONY: build
+
+
+build-docker: ## Build the application
+	docker build -t rstat .
+.PHONY: build-docker
+
+run-docker: ## Run the application
+	docker run -p 3000:3000 rstat
+.PHONY: run-docker
+
 
 ########################################################
 # Infrastructure

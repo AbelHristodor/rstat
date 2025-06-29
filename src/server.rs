@@ -38,7 +38,9 @@ pub async fn create_server(state: AppState) -> Router {
 }
 
 pub async fn start_server(app: Router) -> Result<(), anyhow::Error> {
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     info!("Server started on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await?;
     Ok(())

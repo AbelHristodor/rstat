@@ -1,1 +1,10 @@
 test
+frontend
+target
+.env.example
+.gitignore
+docker-compose.yml
+LICENSE
+Makefile
+Dockerfile
+README.md

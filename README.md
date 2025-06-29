@@ -270,18 +270,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- **Rust Community**: For the amazing ecosystem and tools
-- **Next.js Team**: For the incredible React framework
-- **Tailwind CSS**: For the utility-first CSS framework
-- **Radix UI**: For accessible component primitives
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/abelhristodor/rstat/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/abelhristodor/rstat/discussions)
-- **Email**: habelor@gmail.com
 
 ---
 
