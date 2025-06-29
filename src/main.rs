@@ -14,6 +14,7 @@ mod notifier;
 mod scheduler;
 mod server;
 mod service;
+mod seeder;
 mod utils;
 
 #[tokio::main]
@@ -96,8 +97,8 @@ async fn seed() -> Result<(), anyhow::Error> {
         .run(&pool)
         .await?;
 
-    let svc = service::fixtures::fixtures()?;
-    service::db::bulk_create(&pool, &svc).await?;
+    let seeder = seeder::Seeder::new(pool);
+    seeder.seed_all().await?;
 
     info!("Seeding complete");
     Ok(())

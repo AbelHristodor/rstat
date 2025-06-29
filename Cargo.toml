@@ -29,3 +29,4 @@ url = "2.5.4"
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
 bigdecimal = "0.4"
 num-traits = "0.2"
+rand = "0.8"
