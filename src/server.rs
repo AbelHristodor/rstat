@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use axum::{extract::State, routing::{delete, post}, Json, Router};
+use axum::{extract::State, routing::{get}, Json, Router};
 use http::StatusCode;
 use sqlx::PgPool;
 use tower_http::{
@@ -18,8 +18,11 @@ pub struct AppState {
 
 pub async fn create_server(state: AppState) -> Router {
     Router::new()
-        .route("/http", post(create_http_check))
-        .route("/http", delete(delete_http_check))
+        .route("/http", 
+            get(list_http_checks)
+                .post(create_http_check)
+                .delete(delete_http_check)
+        )
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::new().include_headers(true))
@@ -74,3 +77,16 @@ async fn delete_http_check(
         }
     }
 } 
+
+async fn list_http_checks(
+    State(state): State<AppState>,
+) -> (StatusCode, Json<Vec<service::Service>>) {
+    let checks = service::db::all(&state.pool).await;
+    match checks {
+        Ok(checks) => (StatusCode::OK, Json(checks)),
+        Err(err) => {
+            error!("Failed to list services: {}", err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]))
+        }
+    }
+}

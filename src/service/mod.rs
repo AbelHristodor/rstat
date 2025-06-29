@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
@@ -9,7 +10,7 @@ pub mod db;
 pub mod fixtures;
 
 /// Service represents an entity that can be checked for health.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Service {
     /// Unique identifier for the service.
     pub id: Uuid,

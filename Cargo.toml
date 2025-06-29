@@ -10,7 +10,7 @@ edition = "2024"
 anyhow = "1.0.98"
 async-trait = "0.1.88"
 axum = { version = "0.8.4", features = ["tracing"] }
-chrono = "0.4.41"
+chrono = { version = "0.4.41", features = ["serde"]}
 clap = { version = "4.5.40", features = ["derive"] }
 dotenv = "0.15.0"
 futures = "0.3.31"
@@ -26,4 +26,4 @@ tower-http = { version = "0.6.6", features = ["trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 url = "2.5.4"
-uuid = { version = "1.17.0", features = ["v4"] }
+uuid = { version = "1.17.0", features = ["v4", "serde"] }
