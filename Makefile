@@ -32,11 +32,23 @@ help:
 ########################################################
 # Build Executables
 ########################################################
-run: migrate ## Run the application
-	cargo run start
+run: migrate ## Run the application (server)
+	cargo run -p rstat-server -- start
 
 seed: migrate ## Populate the database with initial data
-	cargo run seed
+	cargo run -p rstat-server -- seed
+
+metrics-calculate: migrate ## Calculate metrics for all services
+	cargo run -p rstat-server -- metrics calculate
+
+metrics-calculate-service: migrate ## Calculate metrics for a specific service
+	cargo run -p rstat-server -- metrics calculate-service $$SERVICE_ID
+
+metrics-calculate-yesterday: migrate ## Calculate yesterday's metrics for all services
+	cargo run -p rstat-server -- metrics calculate-yesterday
+
+metrics-cleanup: migrate ## Clean up old metrics (set DAYS=N)
+	cargo run -p rstat-server -- metrics cleanup --days $${DAYS:-90}
 
 check: ## Check the application
 	cargo check
@@ -47,12 +59,12 @@ build: ## Build the application
 .PHONY: build
 
 
-build-docker: ## Build the application
+build-docker: ## Build the application Docker image
 	docker build -t rstat .
 .PHONY: build-docker
 
-run-docker: ## Run the application
-	docker run -p 3000:3000 rstat
+run-docker: ## Run the application Docker image
+	docker run -p 3001:3001 rstat
 .PHONY: run-docker
 
 

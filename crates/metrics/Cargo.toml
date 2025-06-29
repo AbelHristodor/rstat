@@ -1,0 +1,16 @@
+[package]
+name = "rstat-metrics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rstat-core = { path = "../core" }
+rstat-service = { path = "../service" }
+anyhow = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+bigdecimal = { workspace = true }
+num-traits = { workspace = true }
+tracing = { workspace = true } 

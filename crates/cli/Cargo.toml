@@ -1,0 +1,16 @@
+[package]
+name = "rstat-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rstat-core = { path = "../core" }
+rstat-service = { path = "../service" }
+rstat-metrics = { path = "../metrics" }
+rstat-scheduler = { path = "../scheduler" }
+anyhow = { workspace = true }
+clap = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true } 

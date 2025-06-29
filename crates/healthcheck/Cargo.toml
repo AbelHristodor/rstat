@@ -1,0 +1,18 @@
+[package]
+name = "rstat-healthcheck"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rstat-core = { path = "../core" }
+anyhow = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+http = { workspace = true }
+url = { workspace = true }
+async-trait = {workspace = true}

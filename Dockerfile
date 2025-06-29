@@ -1,39 +1,31 @@
 # =============================================================================
 # STAGE 1: Base Chef Stage (Always runs on current architecture)
 # =============================================================================
-# This stage sets up the build environment with Rust, Zig, and necessary tools
 FROM --platform=$BUILDPLATFORM rust:alpine AS chef
 
 WORKDIR /app
 
-# Set pkg-config sysroot for cross-compilation
-ENV PKG_CONFIG_SYSROOT_DIR=/
-
-# Install system dependencies:
-# - musl-dev: C library headers for musl
-# - openssl & openssl-dev: SSL/TLS library and development headers
-# - zig: Cross-compilation toolchain
-RUN apk add musl-dev openssl openssl-dev zig
+# Install system dependencies for static OpenSSL build
+RUN apk add --no-cache musl-dev openssl openssl-dev \
+    perl cmake make clang gcc libc-dev
 
 # Install Rust tools for efficient builds:
-# - cargo-zigbuild: Enables cross-compilation with Zig
-# - cargo-chef: Caches dependencies to speed up builds
 RUN cargo install --locked cargo-zigbuild cargo-chef
 
-# Add target architectures for cross-compilation:
-# - x86_64-unknown-linux-musl: 64-bit x86 Linux with musl libc
-# - aarch64-unknown-linux-musl: 64-bit ARM Linux with musl libc
 RUN rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
+
+# Set environment variables for static OpenSSL
+ENV OPENSSL_STATIC=1 \
+    OPENSSL_LIB_DIR=/usr/lib \
+    OPENSSL_INCLUDE_DIR=/usr/include
 
 # =============================================================================
 # STAGE 2: Dependency Planning Stage
 # =============================================================================
 FROM chef AS planner
 
-# Copy the entire project source code
 COPY . .
 
-# Generate a recipe of all dependencies needed for the project
 RUN cargo chef prepare --recipe-path recipe.json
 
 # =============================================================================
@@ -43,8 +35,6 @@ FROM chef AS builder
 
 COPY --from=planner /app/recipe.json recipe.json
 
-# Build all dependencies for both target architectures using cargo-chef
-# This step caches dependencies to avoid rebuilding them on every build
 RUN cargo chef cook --recipe-path recipe.json --release --zigbuild \
     --target x86_64-unknown-linux-musl \
     --target aarch64-unknown-linux-musl
@@ -54,19 +44,15 @@ RUN cargo chef cook --recipe-path recipe.json --release --zigbuild \
 # =============================================================================
 COPY . .
 
-# Enable SQLx offline mode to avoid database connection during build
 ENV SQLX_OFFLINE=true
 
 # Build the application for both target architectures using cargo-zigbuild
 RUN cargo zigbuild -r \
     --target x86_64-unknown-linux-musl \
     --target aarch64-unknown-linux-musl && \
-    # Create output directory for the built binaries
     mkdir /app/linux && \
-    # Copy ARM64 binary with descriptive name
-    cp target/aarch64-unknown-linux-musl/release/prog /app/linux/arm64 && \
-    # Copy AMD64 binary with descriptive name
-    cp target/x86_64-unknown-linux-musl/release/prog /app/linux/amd64
+    cp target/aarch64-unknown-linux-musl/release/rstat-server /app/linux/arm64 && \
+    cp target/x86_64-unknown-linux-musl/release/rstat-server /app/linux/amd64
 
 # =============================================================================
 # STAGE 5: Runtime Stage
@@ -77,9 +63,20 @@ WORKDIR /app
 
 ARG TARGETPLATFORM
 
-# Copy the appropriate binary for the target platform from the builder stage
-# The binary is copied to /app/prog for consistent naming
-COPY --from=builder /app/${TARGETPLATFORM} /app/prog
+# Helper script to select the correct binary based on TARGETPLATFORM
+# This works for docker buildx (linux/amd64 or linux/arm64)
+SHELL ["/bin/sh", "-c"]
+RUN apk add --no-cache libgcc
 
-# Set the default command to run the application
-CMD ["/app/prog"]
+COPY --from=builder /app/linux/amd64 /app/rstat-server-amd64
+COPY --from=builder /app/linux/arm64 /app/rstat-server-arm64
+
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+      cp /app/rstat-server-amd64 /app/rstat-server; \
+    elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+      cp /app/rstat-server-arm64 /app/rstat-server; \
+    else \
+      echo "Unsupported TARGETPLATFORM: $TARGETPLATFORM" && exit 1; \
+    fi
+
+CMD ["/app/rstat-server"]

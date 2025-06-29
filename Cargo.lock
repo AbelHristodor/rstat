@@ -828,16 +828,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "http-serde"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f056c8559e3757392c8d091e796416e4649d8e49e88b8d76df6c002f05027fd"
-dependencies = [
- "http",
- "serde",
-]
-
-[[package]]
 name = "httparse"
 version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1663,31 +1653,159 @@ dependencies = [
 ]
 
 [[package]]
-name = "rstat"
+name = "rstat-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "chrono",
+ "http",
+ "rstat-core",
+ "rstat-healthcheck",
+ "rstat-metrics",
+ "rstat-service",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tower-http",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "rstat-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "rstat-core",
+ "rstat-metrics",
+ "rstat-scheduler",
+ "rstat-service",
+ "sqlx",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "rstat-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
+ "chrono",
+ "serde",
+ "sqlx",
+ "uuid",
+]
+
+[[package]]
+name = "rstat-healthcheck"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "http",
+ "reqwest",
+ "rstat-core",
+ "serde",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "rstat-metrics"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
  "bigdecimal",
  "chrono",
- "clap",
- "dotenv",
- "futures",
- "http",
- "http-serde",
  "num-traits",
- "rand",
- "reqwest",
+ "rstat-core",
+ "rstat-service",
  "serde",
- "serde_json",
+ "sqlx",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "rstat-scheduler"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "futures",
+ "rstat-core",
+ "rstat-healthcheck",
+ "rstat-metrics",
+ "rstat-service",
  "sqlx",
  "tokio",
  "tokio-util",
- "tower-http",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "rstat-seeder"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "futures",
+ "rand",
+ "rstat-core",
+ "rstat-metrics",
+ "rstat-service",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "rstat-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "chrono",
+ "clap",
+ "dotenv",
+ "rstat-api",
+ "rstat-cli",
+ "rstat-core",
+ "rstat-healthcheck",
+ "rstat-metrics",
+ "rstat-scheduler",
+ "rstat-seeder",
+ "rstat-service",
+ "sqlx",
+ "tokio",
  "tracing",
  "tracing-subscriber",
- "url",
+ "uuid",
+]
+
+[[package]]
+name = "rstat-service"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "http",
+ "rstat-core",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tracing",
  "uuid",
 ]
 

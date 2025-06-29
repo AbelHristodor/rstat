@@ -1,12 +1,17 @@
-[package]
-name = "rstat"
-authors = ["Abel Hristodor <habelor@gmail.com>"]
-description = "An async rust health check web app"
-readme = "README.md"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "crates/core",
+    "crates/service",
+    "crates/healthcheck",
+    "crates/metrics",
+    "crates/scheduler",
+    "crates/api",
+    "crates/cli",
+    "crates/seeder",
+    "crates/server",
+]
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0.98"
 async-trait = "0.1.88"
 axum = { version = "0.8.4", features = ["tracing"] }
@@ -30,3 +35,4 @@ uuid = { version = "1.17.0", features = ["v4", "serde"] }
 bigdecimal = "0.4"
 num-traits = "0.2"
 rand = "0.8"
+openssl = {version = "0.10.73", features = ["vendored"]}
