@@ -35,16 +35,64 @@ Rstat is a modern, high-performance healthcheck monitoring system built with **R
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Next.js       │    │   Rust Backend  │    │   PostgreSQL    │
-│   Frontend      │◄──►│   (Axum)        │◄──►│   Database      │
-│                 │    │                 │    │                 │
-│ • Status Page   │    │ • Health Checks │    │ • Services      │
-│ • Real-time UI  │    │ • API Endpoints │    │ • Results       │
-│ • Charts        │    │ • Scheduler     │    │ • Metrics       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
+The application is structured as a Rust workspace with the following crates:
+
+### Core Crates
+
+- **`rstat-core`** - Core domain models and shared types
+  - Service and HealthCheck models
+  - Common traits and enums
+  - Shared data structures
+
+- **`rstat-service`** - Service management
+  - Database operations for services
+  - Service CRUD operations
+  - Service fixtures for testing
+
+- **`rstat-healthcheck`** - Health checking functionality
+  - HTTP and TCP health checkers
+  - Health check result storage
+  - Checker implementations
+
+- **`rstat-metrics`** - Metrics calculation and storage
+  - Service metrics models
+  - Metrics calculation logic
+  - Database operations for metrics
+
+- **`rstat-scheduler`** - Scheduling and background tasks
+  - Service scheduling logic
+  - Metrics updater
+  - Background task management
+
+### Application Crates
+
+- **`rstat-api`** - HTTP API layer
+  - REST API endpoints
+  - Request/response handling
+  - API types and validation
+
+- **`rstat-cli`** - Command line interface
+  - CLI command definitions
+  - Command parsing and routing
+
+- **`rstat-seeder`** - Data seeding functionality
+  - Test data generation
+  - Database seeding
+  - Sample service creation
+
+- **`rstat-server`** - Main server application
+  - Application entry point
+  - Component orchestration
+  - Server startup logic
+
+## Benefits of This Structure
+
+1. **Separation of Concerns**: Each crate has a single responsibility
+2. **Reusability**: Core functionality can be reused across different applications
+3. **Testability**: Each crate can be tested independently
+4. **Maintainability**: Changes to one area don't affect others
+5. **Scalability**: Easy to add new features or modify existing ones
+6. **Dependency Management**: Clear dependency boundaries between components
 
 ## 🚀 Quick Start
 

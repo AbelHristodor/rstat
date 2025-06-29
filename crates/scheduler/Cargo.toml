@@ -1,0 +1,18 @@
+[package]
+name = "rstat-scheduler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rstat-core = { path = "../core" }
+rstat-service = { path = "../service" }
+rstat-healthcheck = { path = "../healthcheck" }
+rstat-metrics = { path = "../metrics" }
+anyhow = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tokio-util = { workspace = true }
+futures = { workspace = true } 
