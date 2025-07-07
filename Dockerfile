@@ -1,5 +1,9 @@
 FROM rust:bookworm AS chef
 
+LABEL org.opencontainers.image.source=https://github.com/AbelHristodor/rstat
+LABEL org.opencontainers.image.description="Status page for your services"
+LABEL org.opencontainers.image.licenses=GPL-3.0-or-later
+
 RUN cargo install cargo-chef 
 WORKDIR app
 

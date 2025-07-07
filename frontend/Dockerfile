@@ -1,6 +1,10 @@
 # ---- Stage 1: Build with Bun ----
 FROM oven/bun:1.1 AS builder
 
+LABEL org.opencontainers.image.source=https://github.com/AbelHristodor/rstat
+LABEL org.opencontainers.image.description="Status page for your services"
+LABEL org.opencontainers.image.licenses=GPL-3.0-or-later
+
 WORKDIR /app
 
 # Copy dependencies
