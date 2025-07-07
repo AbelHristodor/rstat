@@ -37,14 +37,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase actor
+        run: |
+          echo "ACTOR=${github.actor@L}" >> $GITHUB_ENV
+
       - name: Build and Push Docker Images
         uses: docker/build-push-action@v4
         with:
           context: .
           file: Dockerfile
           tags: |
-            ghcr.io/${{ github.actor }}/rstat-server:${{ inputs.version || steps.get_version.outputs.version }}
-            ghcr.io/${{ github.actor }}/rstat-server:latest
+            ghcr.io/${{ env.ACTOR }}/rstat-server:${{ inputs.version || steps.get_version.outputs.version }}
+            ghcr.io/${{ env.ACTOR }}/rstat-server:latest
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -55,8 +59,8 @@ jobs:
           context: frontend
           file: frontend/Dockerfile
           tags: |
-            ghcr.io/${{ github.actor }}/rstat-frontend:${{ inputs.version || steps.get_version.outputs.version }}
-            ghcr.io/${{ github.actor }}/rstat-frontend:latest
+            ghcr.io/${{ env.ACTOR }}/rstat-frontend:${{ inputs.version || steps.get_version.outputs.version }}
+            ghcr.io/${{ env.ACTOR }}/rstat-frontend:latest
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
