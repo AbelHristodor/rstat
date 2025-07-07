@@ -39,7 +39,7 @@ jobs:
 
       - name: Lowercase actor
         run: |
-          echo "ACTOR=${github.actor@L}" >> $GITHUB_ENV
+          echo "ACTOR=abelhristodor" >> $GITHUB_ENV
 
       - name: Build and Push Docker Images
         uses: docker/build-push-action@v4
