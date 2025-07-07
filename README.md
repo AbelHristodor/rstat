@@ -13,6 +13,17 @@
 
 Rstat is a modern, high-performance healthcheck monitoring system built with **Rust** for the backend and **Next.js** for the frontend. It provides real-time monitoring of your services with beautiful dashboards, detailed metrics, and instant notifications.
 
+<p align="center">
+  <img src=".github/assets/img1-1.png" alt="Status Dashboard - Dark Mode" width="800"/>
+</p>
+
+<p align="center">
+  <img src=".github/assets/img2-1.png" alt="Status Dashboard - Dark Mode" width="800"/>
+</p>
+<p align="center">
+  <img src=".github/assets/img3-1.png" alt="Status Dashboard - Light Mode" width="800"/>
+</p>
+
 ## 🌟 Features
 
 ### 🔧 Backend (Rust)
