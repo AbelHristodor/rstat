@@ -23,7 +23,7 @@ jobs:
         name: Get version
         continue-on-error: true
         uses: jannemattila/get-version-from-tag@v4
-        
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -43,8 +43,8 @@ jobs:
           context: .
           file: Dockerfile
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/rstat-server:${{ inputs.version || steps.get_version.outputs.version }}
-            ${{ secrets.DOCKER_USERNAME }}/rstat-server:latest
+            ${{ github.actor }}/rstat-server:${{ inputs.version || steps.get_version.outputs.version }}
+            ${{ github.actor }}/rstat-server:latest
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -55,8 +55,8 @@ jobs:
           context: frontend
           file: frontend/Dockerfile
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/rstat-frontend:${{ inputs.version || steps.get_version.outputs.version }}
-            ${{ secrets.DOCKER_USERNAME }}/rstat-frontend:latest
+            ${{ github.actor }}/rstat-frontend:${{ inputs.version || steps.get_version.outputs.version }}
+            ${{ github.actor }}/rstat-frontend:latest
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
