@@ -21,6 +21,7 @@ jobs:
 
       - id: get_version
         name: Get version
+        continue-on-error: true
         uses: jannemattila/get-version-from-tag@v4
 
       - name: Login to GitHub Container Registry
