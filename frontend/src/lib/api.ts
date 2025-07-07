@@ -121,190 +121,34 @@ function convertServiceToStatus(service: Service, metrics?: ServiceMetricsSummar
   };
 }
 
-// Helper function to convert ServiceMetricsSummary to ServiceMetrics
-function convertMetricsSummaryToServiceMetrics(summary: ServiceMetricsSummary): ServiceMetrics {
-  return {
-    serviceId: summary.service_id,
-    uptimeData: summary.uptime_data.map(point => ({
-      date: point.date,
-      uptime: point.uptime_percentage,
-      latency: point.latency_ms
-    })),
-    currentUptime: summary.current_uptime,
-    currentLatency: summary.current_latency_ms,
-    averageLatency: summary.average_latency_ms
-  };
+export interface ServiceWithMetricsSummary {
+  service: Service;
+  metrics_summary: ServiceMetricsSummary;
 }
 
-// API functions
-export async function fetchServices(): Promise<ServiceStatus[]> {
+export async function fetchServicesWithMetrics(days: number = 30): Promise<{ status: ServiceStatus, metrics: ServiceMetrics }[]> {
   try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/http`);
+    const response = await fetchWithTimeout(`${API_BASE_URL}/services_with_metrics?days=${days}`);
     if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('API endpoint not found. Please check if the backend service is running.');
-      } else if (response.status >= 500) {
-        throw new Error(`Server error (${response.status}): The backend service is experiencing issues.`);
-      } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const services: Service[] = await response.json();
-    
-    // For each service, fetch its metrics summary to get current status
-    const servicesWithMetrics = await Promise.all(
-      services.map(async (service) => {
-        try {
-          const metricsResponse = await fetchWithTimeout(`${API_BASE_URL}/metrics/${service.id}/summary`);
-          if (metricsResponse.ok) {
-            const metrics: ServiceMetricsSummary = await metricsResponse.json();
-            return convertServiceToStatus(service, metrics);
-          }
-        } catch (error) {
-          console.warn(`Failed to fetch metrics for service ${service.id}:`, error);
-        }
-        return convertServiceToStatus(service);
-      })
-    );
-    
-    return servicesWithMetrics;
+    const data: ServiceWithMetricsSummary[] = await response.json();
+    return data.map(({ service, metrics_summary }) => ({
+      status: convertServiceToStatus(service, metrics_summary),
+      metrics: {
+        serviceId: service.id,
+        uptimeData: metrics_summary.uptime_data.map(point => ({
+          date: point.date,
+          uptime: point.uptime_percentage,
+          latency: point.latency_ms
+        })),
+        currentUptime: metrics_summary.current_uptime,
+        currentLatency: metrics_summary.current_latency_ms,
+        averageLatency: metrics_summary.average_latency_ms
+      }
+    }));
   } catch (error) {
-    console.error('Error fetching services:', error);
-    if (error instanceof Error) {
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('Unable to connect to the backend service. Please check your network connection and ensure the service is running.');
-      }
-      throw error;
-    }
-    throw new Error('An unexpected error occurred while fetching services.');
-  }
-}
-
-export async function fetchServiceMetrics(serviceId: string, days: number = 30): Promise<ServiceMetrics> {
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/metrics/${serviceId}/summary?days=${days}`);
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`Metrics not found for service ${serviceId}. The service may not exist or have no metrics data.`);
-      } else if (response.status >= 500) {
-        throw new Error(`Server error (${response.status}): Unable to fetch metrics for service ${serviceId}.`);
-      } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    }
-    const summary: ServiceMetricsSummary = await response.json();
-    return convertMetricsSummaryToServiceMetrics(summary);
-  } catch (error) {
-    console.error(`Error fetching metrics for service ${serviceId}:`, error);
-    if (error instanceof Error) {
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('Unable to connect to the backend service. Please check your network connection.');
-      }
-      throw error;
-    }
-    throw new Error(`An unexpected error occurred while fetching metrics for service ${serviceId}.`);
-  }
-}
-
-export async function fetchAllServiceMetrics(days: number = 30): Promise<ServiceMetrics[]> {
-  try {
-    const services = await fetchServices();
-    const metrics = await Promise.all(
-      services.map(async (service) => {
-        try {
-          return await fetchServiceMetrics(service.id, days);
-        } catch (error) {
-          console.warn(`Failed to fetch metrics for service ${service.id}:`, error);
-          // Return empty metrics if fetch fails
-          return {
-            serviceId: service.id,
-            uptimeData: [],
-            currentUptime: 0,
-            currentLatency: 0,
-            averageLatency: 0
-          };
-        }
-      })
-    );
-    return metrics;
-  } catch (error) {
-    console.error('Error fetching all service metrics:', error);
+    console.error('Error fetching services with metrics:', error);
     throw error;
-  }
-}
-
-// Additional API functions for direct backend access
-export async function fetchRawServices(): Promise<Service[]> {
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/http`);
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('API endpoint not found. Please check if the backend service is running.');
-      } else if (response.status >= 500) {
-        throw new Error(`Server error (${response.status}): The backend service is experiencing issues.`);
-      } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching raw services:', error);
-    if (error instanceof Error) {
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('Unable to connect to the backend service. Please check your network connection.');
-      }
-      throw error;
-    }
-    throw new Error('An unexpected error occurred while fetching services.');
-  }
-}
-
-export async function fetchRawServiceMetrics(serviceId: string, days: number = 30): Promise<ServiceMetric[]> {
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/metrics/${serviceId}?days=${days}`);
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`Metrics not found for service ${serviceId}. The service may not exist or have no metrics data.`);
-      } else if (response.status >= 500) {
-        throw new Error(`Server error (${response.status}): Unable to fetch metrics for service ${serviceId}.`);
-      } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    }
-    return response.json();
-  } catch (error) {
-    console.error(`Error fetching raw metrics for service ${serviceId}:`, error);
-    if (error instanceof Error) {
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('Unable to connect to the backend service. Please check your network connection.');
-      }
-      throw error;
-    }
-    throw new Error(`An unexpected error occurred while fetching metrics for service ${serviceId}.`);
-  }
-}
-
-export async function fetchRawServiceMetricsSummary(serviceId: string, days: number = 30): Promise<ServiceMetricsSummary> {
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/metrics/${serviceId}/summary?days=${days}`);
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`Metrics summary not found for service ${serviceId}. The service may not exist or have no metrics data.`);
-      } else if (response.status >= 500) {
-        throw new Error(`Server error (${response.status}): Unable to fetch metrics summary for service ${serviceId}.`);
-      } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    }
-    return response.json();
-  } catch (error) {
-    console.error(`Error fetching raw metrics summary for service ${serviceId}:`, error);
-    if (error instanceof Error) {
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        throw new Error('Unable to connect to the backend service. Please check your network connection.');
-      }
-      throw error;
-    }
-    throw new Error(`An unexpected error occurred while fetching metrics summary for service ${serviceId}.`);
   }
 }

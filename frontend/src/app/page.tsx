@@ -8,12 +8,11 @@ import { ServiceStatusCard } from "@/components/service-status-card";
 import { ServiceChart } from "@/components/service-chart";
 import { ErrorPage } from "@/components/error-page";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { fetchServices, fetchAllServiceMetrics, ServiceStatus, ServiceMetrics } from "@/lib/api";
+import { fetchServicesWithMetrics, ServiceStatus, ServiceMetrics } from "@/lib/api";
 import { Activity, CheckCircle, AlertTriangle, XCircle, Wrench, RefreshCw } from "lucide-react";
 
 export default function StatusPage() {
-  const [services, setServices] = useState<ServiceStatus[]>([]);
-  const [metrics, setMetrics] = useState<ServiceMetrics[]>([]);
+  const [serviceData, setServiceData] = useState<{ status: ServiceStatus, metrics: ServiceMetrics }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string>('all');
@@ -34,12 +33,8 @@ export default function StatusPage() {
     setLoading(true);
     setError(null);
     try {
-      const [servicesData, metricsData] = await Promise.all([
-        fetchServices(),
-        fetchAllServiceMetrics(parseInt(timeRange))
-      ]);
-      setServices(servicesData);
-      setMetrics(metricsData);
+      const data = await fetchServicesWithMetrics(parseInt(timeRange));
+      setServiceData(data);
     } catch (error) {
       console.error('Error loading data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -63,6 +58,9 @@ export default function StatusPage() {
       />
     );
   }
+
+  const services = serviceData.map(d => d.status);
+  const metrics = serviceData.map(d => d.metrics);
 
   const getOverallStatus = () => {
     if (services.length === 0) return 'unknown';

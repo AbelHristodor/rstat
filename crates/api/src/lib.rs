@@ -4,14 +4,15 @@ use axum::{extract::State, routing::{get}, Json, Router, extract::Path, extract:
 use http::StatusCode;
 use sqlx::PgPool;
 use serde::Deserialize;
+use serde::Serialize;
 use tower_http::{
     LatencyUnit,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     cors::{CorsLayer, Any},
 };
-use tracing::{error, info, Level};
+use tracing::{error, Level};
 
-use rstat_core::{Service, Kind};
+use rstat_core::Service;
 use rstat_service;
 use rstat_healthcheck;
 use rstat_metrics::{ServiceMetric, ServiceMetricsSummary, MetricsCalculator};
@@ -26,6 +27,12 @@ pub struct AppState {
 #[derive(Deserialize)]
 pub struct MetricsQuery {
     days: Option<u32>,
+}
+
+#[derive(Serialize)]
+pub struct ServiceWithMetricsSummary {
+    pub service: Service,
+    pub metrics_summary: ServiceMetricsSummary,
 }
 
 pub async fn create_server(state: AppState) -> Router {
@@ -44,6 +51,7 @@ pub async fn create_server(state: AppState) -> Router {
         .route("/metrics", get(get_all_metrics))
         .route("/metrics/{service_id}", get(get_service_metrics))
         .route("/metrics/{service_id}/summary", get(get_service_metrics_summary))
+        .route("/services_with_metrics", get(list_services_with_metrics))
         .layer(cors)
         .layer(
             TraceLayer::new_for_http()
@@ -186,4 +194,32 @@ async fn get_service_metrics_summary(
             }))
         }
     }
+}
+
+async fn list_services_with_metrics(
+    State(state): State<AppState>,
+    Query(query): Query<MetricsQuery>,
+) -> (StatusCode, Json<Vec<ServiceWithMetricsSummary>>) {
+    let days = query.days.unwrap_or(30);
+    let calculator = MetricsCalculator::new(state.pool.clone());
+    let services = match rstat_service::all(&state.pool).await {
+        Ok(svcs) => svcs,
+        Err(err) => {
+            error!("Failed to list services: {}", err);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]));
+        }
+    };
+    let mut result = Vec::with_capacity(services.len());
+    for service in services {
+        let summary = calculator.get_metrics_summary(service.id, Some(days)).await
+            .unwrap_or(ServiceMetricsSummary {
+                service_id: service.id,
+                current_uptime: 0.0,
+                current_latency_ms: 0,
+                average_latency_ms: 0,
+                uptime_data: vec![],
+            });
+        result.push(ServiceWithMetricsSummary { service, metrics_summary: summary });
+    }
+    (StatusCode::OK, Json(result))
 } 
