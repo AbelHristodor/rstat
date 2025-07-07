@@ -19,8 +19,9 @@ export default function StatusPage() {
   const [timeRange, setTimeRange] = useState<string>('30');
 
   // Update relative time every minute
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [timeUpdateTrigger, setTimeUpdateTrigger] = useState(0);
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeUpdateTrigger(prev => prev + 1);
@@ -51,9 +52,9 @@ export default function StatusPage() {
   // Show error page if there's an error
   if (error) {
     return (
-      <ErrorPage 
-        error={error} 
-        onRetry={loadData} 
+      <ErrorPage
+        error={error}
+        onRetry={loadData}
         isLoading={loading}
       />
     );
@@ -64,10 +65,10 @@ export default function StatusPage() {
 
   const getOverallStatus = () => {
     if (services.length === 0) return 'unknown';
-    
+
     const hasOutage = services.some(s => s.status === 'outage');
     const hasDegraded = services.some(s => s.status === 'degraded');
-    
+
     if (hasOutage) return 'outage';
     if (hasDegraded) return 'degraded';
     return 'operational';
@@ -104,8 +105,8 @@ export default function StatusPage() {
   };
 
   const overallStatus = getOverallStatus();
-  const selectedMetrics = selectedService === 'all' 
-    ? metrics 
+  const selectedMetrics = selectedService === 'all'
+    ? metrics
     : metrics.filter(m => m.serviceId === selectedService);
 
   return (
@@ -125,7 +126,7 @@ export default function StatusPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 {getStatusIcon(overallStatus)}
@@ -163,7 +164,7 @@ export default function StatusPage() {
               ))}
             </SelectContent>
           </Select>
-          
+
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-full sm:w-32">
               <SelectValue />
@@ -194,36 +195,42 @@ export default function StatusPage() {
             ))}
           </div>
         ) : (
-          <>
-            {/* Service Status Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {(selectedService === 'all' ? services : services.filter(s => s.id === selectedService)).map((service) => (
-                <ServiceStatusCard key={service.id} service={service} />
-              ))}
+          services.length === 0 ? (
+            <div className="text-center text-slate-600 dark:text-slate-400">
+              No services found
             </div>
-
-            {/* Charts */}
-            {selectedMetrics.length > 0 && (
-              <div className="space-y-6">
-                {selectedMetrics.map((metric) => {
-                  const service = services.find(s => s.id === metric.serviceId);
-                  return (
-                    <div key={metric.serviceId} className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                          {service?.name} Performance
-                        </h2>
-                        <Badge variant="outline" className="text-xs">
-                          {timeRange} days
-                        </Badge>
-                      </div>
-                      <ServiceChart metrics={metric} />
-                    </div>
-                  );
-                })}
+          ) : (
+            <>
+              {/* Service Status Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {(selectedService === 'all' ? services : services.filter(s => s.id === selectedService)).map((service) => (
+                  <ServiceStatusCard key={service.id} service={service} />
+                ))}
               </div>
-            )}
-          </>
+
+              {/* Charts */}
+              {selectedMetrics.length > 0 && (
+                <div className="space-y-6">
+                  {selectedMetrics.map((metric) => {
+                    const service = services.find(s => s.id === metric.serviceId);
+                    return (
+                      <div key={metric.serviceId} className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+                            {service?.name} Performance
+                          </h2>
+                          <Badge variant="outline" className="text-xs">
+                            {timeRange} days
+                          </Badge>
+                        </div>
+                        <ServiceChart metrics={metric} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )
         )}
       </main>
 

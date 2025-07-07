@@ -6,7 +6,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![License: GNU GPLv3](https://img.shields.io/badge/license-%20%20GNU%20GPLv3%20-green?style=plastic)](https://www.gnu.org/licenses/gpl-3.0.html)
 [![Made with Love](https://img.shields.io/badge/Made%20with-❤️-red.svg?style=for-the-badge)](https://github.com/abelhristodor/rstat)
 
 > **Real-time system monitoring with blazing fast performance** ⚡
@@ -326,18 +326,8 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 4. Add tests
 5. Submit a pull request
 
-## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-
----
-
-**Made with ❤️ by [Abel Hristodor](https://github.com/abelhristodor)**
-
-*Star this repository if you found it helpful! ⭐*
-
-## ⚡ YAML Service Configuration (NEW)
+## ⚡ YAML Service Configuration
 
 You can now define your services in a YAML file and have them created automatically on startup or via CLI.
 

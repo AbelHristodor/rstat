@@ -27,7 +27,7 @@ export function ErrorPage({ error, onRetry, isLoading = false }: ErrorPageProps)
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p className="text-slate-600 dark:text-slate-400">
-            We're unable to connect to our monitoring service at the moment. 
+            We&apos;re unable to connect to our monitoring service at the moment. 
             This could be due to:
           </p>
           

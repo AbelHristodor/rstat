@@ -120,7 +120,6 @@ pub fn generate_health_check_results(
     service_id: Uuid,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
-    interval: Duration,
 ) -> Vec<HealthCheckResult> {
     let mut rng = rand::thread_rng();
     let mut results = Vec::new();
@@ -230,9 +229,8 @@ mod tests {
         let service_id = Uuid::new_v4();
         let start_date = Utc::now() - ChronoDuration::days(1);
         let end_date = Utc::now();
-        let interval = Duration::from_secs(60);
         
-        let results = generate_health_check_results(service_id, start_date, end_date, interval);
+        let results = generate_health_check_results(service_id, start_date, end_date);
         
         // Should generate exactly 300 results for 1 day
         assert_eq!(results.len(), 300);

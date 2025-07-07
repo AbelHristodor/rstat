@@ -41,9 +41,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
 async fn start() -> Result<(), anyhow::Error> {
     let database_url = env::var("DATABASE_URL").expect("Expected DATABASE_URL in the environment");
+    let migrations_path = env::var("MIGRATIONS_PATH").unwrap_or_else(|_| "migrations".to_string());
 
     let pool = sqlx::PgPool::connect(&database_url).await?;
-    Migrator::new(Path::new("migrations"))
+    Migrator::new(Path::new(&migrations_path))
         .await?
         .run(&pool)
         .await?;
@@ -58,21 +59,20 @@ async fn start() -> Result<(), anyhow::Error> {
         }
         Err(e) => {
             info!("No environment configuration found or error loading: {}", e);
+            // Try loading from default locations if no environment config
+            match config_loader.load_from_default().await {
+                Ok(ids) => {
+                    if !ids.is_empty() {
+                        info!("Loaded {} services from default configuration", ids.len());
+                    }
+                }
+                Err(e) => {
+                    info!("No default configuration found or error loading: {}", e);
+                }
+            }
         }
     }
     
-    // Try loading from default locations if no environment config
-    match config_loader.load_from_default().await {
-        Ok(ids) => {
-            if !ids.is_empty() {
-                info!("Loaded {} services from default configuration", ids.len());
-            }
-        }
-        Err(e) => {
-            info!("No default configuration found or error loading: {}", e);
-        }
-    }
-
     let (result_tx, result_rx) = mpsc::channel(100);
     
     // Create app state

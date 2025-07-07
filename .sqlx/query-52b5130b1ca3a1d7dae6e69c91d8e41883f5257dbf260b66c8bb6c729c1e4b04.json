@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM healthcheck_results",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "52b5130b1ca3a1d7dae6e69c91d8e41883f5257dbf260b66c8bb6c729c1e4b04"
+}

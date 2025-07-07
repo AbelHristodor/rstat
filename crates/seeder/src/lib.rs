@@ -1,10 +1,9 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use sqlx::PgPool;
-use uuid::Uuid;
 use tracing::{info, error};
 use futures::future::join_all;
 
-use rstat_core::{Service, HealthCheckResult};
+use rstat_core::Service;
 use rstat_metrics::MetricsCalculator;
 
 pub mod data_generator;
@@ -94,7 +93,6 @@ impl Seeder {
                     service.id,
                     start_date,
                     end_date,
-                    service.interval,
                 );
                 for result in results {
                     let _ = sqlx::query!(

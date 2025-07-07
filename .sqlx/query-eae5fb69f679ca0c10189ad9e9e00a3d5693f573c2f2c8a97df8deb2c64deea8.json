@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, success, code, response_time, service_id, message FROM healthcheck_results WHERE service_id = $1",
+  "query": "\n            SELECT id, success, code, response_time, message, created_at\n            FROM healthcheck_results \n            WHERE service_id = $1 AND created_at >= $2 AND created_at <= $3\n            ORDER BY created_at\n            ",
   "describe": {
     "columns": [
       {
@@ -25,18 +25,20 @@
       },
       {
         "ordinal": 4,
-        "name": "service_id",
-        "type_info": "Uuid"
+        "name": "message",
+        "type_info": "Text"
       },
       {
         "ordinal": 5,
-        "name": "message",
-        "type_info": "Text"
+        "name": "created_at",
+        "type_info": "Timestamp"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Timestamp",
+        "Timestamp"
       ]
     },
     "nullable": [
@@ -44,9 +46,9 @@
       false,
       true,
       true,
-      false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "7c4f4db48b4f5d6b13a93bc93a9f508168aa27e3436442dc623d6a6c90b6e761"
+  "hash": "eae5fb69f679ca0c10189ad9e9e00a3d5693f573c2f2c8a97df8deb2c64deea8"
 }

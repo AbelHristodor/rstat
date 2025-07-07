@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM service_metrics WHERE date < $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "07fc5e4551c9711a45b4325e57f340eccd6220129b31d0f1ded280fffc7b0e5f"
+}

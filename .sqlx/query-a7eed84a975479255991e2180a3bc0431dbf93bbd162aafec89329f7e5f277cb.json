@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO healthcheck_results (id, success, code, response_time, service_id, message, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Varchar",
+        "Int8",
+        "Uuid",
+        "Text",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a7eed84a975479255991e2180a3bc0431dbf93bbd162aafec89329f7e5f277cb"
+}

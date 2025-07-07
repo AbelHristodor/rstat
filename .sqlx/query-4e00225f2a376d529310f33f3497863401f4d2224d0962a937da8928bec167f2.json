@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, success, code, response_time, service_id, message, created_at FROM healthcheck_results WHERE service_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "success",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "response_time",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "4e00225f2a376d529310f33f3497863401f4d2224d0962a937da8928bec167f2"
+}

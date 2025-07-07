@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM service_metrics",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6b053a3f3378dfbc2600d6fd4919b210835c1f998687328adeae4b2a35b2e4a1"
+}

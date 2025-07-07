@@ -30,7 +30,9 @@ export interface Service {
   id: string;
   name: string;
   kind: {
+    /* eslint-disable  @typescript-eslint/no-explicit-any */ 
     HTTP?: any;
+    /* eslint-disable  @typescript-eslint/no-explicit-any */ 
     TCP?: any;
   };
   interval: {
