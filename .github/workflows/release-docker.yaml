@@ -43,8 +43,8 @@ jobs:
           context: .
           file: Dockerfile
           tags: |
-            ${{ github.actor }}/rstat-server:${{ inputs.version || steps.get_version.outputs.version }}
-            ${{ github.actor }}/rstat-server:latest
+            ghcr.io/${{ github.actor }}/rstat-server:${{ inputs.version || steps.get_version.outputs.version }}
+            ghcr.io/${{ github.actor }}/rstat-server:latest
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -55,8 +55,8 @@ jobs:
           context: frontend
           file: frontend/Dockerfile
           tags: |
-            ${{ github.actor }}/rstat-frontend:${{ inputs.version || steps.get_version.outputs.version }}
-            ${{ github.actor }}/rstat-frontend:latest
+            ghcr.io/${{ github.actor }}/rstat-frontend:${{ inputs.version || steps.get_version.outputs.version }}
+            ghcr.io/${{ github.actor }}/rstat-frontend:latest
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
