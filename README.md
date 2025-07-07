@@ -11,7 +11,7 @@
 
 > **Real-time system monitoring with blazing fast performance** ⚡
 
-Rstat is a modern, high-performance healthcheck monitoring system built with **Rust** for the backend and **Next.js** for the frontend. It provides real-time monitoring of your services with beautiful dashboards, detailed metrics, and instant notifications.
+Rstat is a modern, high-performance healthcheck monitoring system built with **Rust** for the backend and **Next.js** for the frontend. It provides real-time monitoring of your services with beautiful dashboards, detailed metrics, and instant notifications (soon).
 
 <p align="center">
   <img src=".github/assets/img1-1.png" alt="Status Dashboard - Dark Mode" width="800"/>
@@ -22,6 +22,7 @@ Rstat is a modern, high-performance healthcheck monitoring system built with **R
 </p>
 <p align="center">
   <img src=".github/assets/img3-1.png" alt="Status Dashboard - Light Mode" width="800"/>
+  <small style="opacity:1; font-size:90%;">Image captured using <a href="https://www.cleansnap.co/">CleanSnap</a>.</small>
 </p>
 
 ## 🌟 Features
