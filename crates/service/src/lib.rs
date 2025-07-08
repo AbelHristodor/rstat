@@ -23,3 +23,7 @@ pub async fn all(pool: &PgPool) -> Result<Vec<Service>, anyhow::Error> {
 pub async fn delete(pool: &PgPool, id: uuid::Uuid) -> Result<(), anyhow::Error> {
     db::delete(pool, id).await
 } 
+
+pub async fn get_by_service_type(pool: &PgPool, kind: &rstat_core::Kind) -> Result<Vec<Service>, anyhow::Error> {
+    db::get_by_service_type(pool, kind).await.map_err(|e| anyhow::anyhow!(e))
+}

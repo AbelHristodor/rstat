@@ -25,8 +25,8 @@ pub fn generate_services() -> Vec<Service> {
             id: Uuid::new_v4(),
             name: "Database Cluster".to_string(),
             kind: Kind::TCP(TcpChecker {
-                host: "db.example.com".to_string(),
-                port: 5432,
+                host: "localhost".to_string(),
+                port: 65432,
                 timeout: 5,
                 max_retries: 3,
             }),
@@ -79,8 +79,8 @@ pub fn generate_services() -> Vec<Service> {
             id: Uuid::new_v4(),
             name: "CDN Edge Server".to_string(),
             kind: Kind::TCP(TcpChecker {
-                host: "cdn.example.com".to_string(),
-                port: 443,
+                host: "localhost".to_string(),
+                port: 65432,
                 timeout: 5,
                 max_retries: 3,
             }),
@@ -91,8 +91,8 @@ pub fn generate_services() -> Vec<Service> {
             id: Uuid::new_v4(),
             name: "Redis Cache".to_string(),
             kind: Kind::TCP(TcpChecker {
-                host: "redis.example.com".to_string(),
-                port: 6379,
+                host: "localhost".to_string(),
+                port: 65432,
                 timeout: 5,
                 max_retries: 3,
             }),

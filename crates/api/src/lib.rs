@@ -47,6 +47,11 @@ pub async fn create_server(state: AppState) -> Router {
                 .post(create_http_check)
                 .delete(delete_http_check)
         )
+        .route("/tcp",
+            get(list_tcp_checks)
+                .post(create_tcp_check)
+                .delete(delete_tcp_check)
+        )
         .route("/http/checks/{id}", get(get_checks_for_service))
         .route("/metrics", get(get_all_metrics))
         .route("/metrics/{service_id}", get(get_service_metrics))
@@ -106,7 +111,7 @@ async fn delete_http_check(
 async fn list_http_checks(
     State(state): State<AppState>,
 ) -> (StatusCode, Json<Vec<Service>>) {
-    let checks = rstat_service::all(&state.pool).await;
+    let checks = rstat_service::get_by_service_type(&state.pool, &rstat_core::Kind::HTTP(rstat_core::HttpChecker::default())).await;
     match checks {
         Ok(checks) => (StatusCode::OK, Json(checks)),
         Err(err) => {
@@ -212,14 +217,63 @@ async fn list_services_with_metrics(
     let mut result = Vec::with_capacity(services.len());
     for service in services {
         let summary = calculator.get_metrics_summary(service.id, Some(days)).await
-            .unwrap_or(ServiceMetricsSummary {
-                service_id: service.id,
-                current_uptime: 0.0,
-                current_latency_ms: 0,
-                average_latency_ms: 0,
-                uptime_data: vec![],
-            });
+            .unwrap();
         result.push(ServiceWithMetricsSummary { service, metrics_summary: summary });
     }
     (StatusCode::OK, Json(result))
+}
+
+// TCP Handlers
+async fn list_tcp_checks(
+    State(state): State<AppState>,
+) -> (StatusCode, Json<Vec<Service>>) {
+    let checks = rstat_service::get_by_service_type(&state.pool, &rstat_core::Kind::TCP(rstat_core::TcpChecker::default())).await;
+    match checks {
+        Ok(checks) => (StatusCode::OK, Json(checks)),
+        Err(err) => {
+            error!("Failed to list services: {}", err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]))
+        }
+    }
+}
+
+async fn create_tcp_check(
+    State(state): State<AppState>,
+    Json(payload): Json<types::CreateServiceRequest>,
+) -> (StatusCode, Json<String>) {
+    // Only allow Kind::TCP
+    if !matches!(payload.kind, rstat_core::Kind::TCP(_)) {
+        return (StatusCode::BAD_REQUEST, Json("Only TCP kind allowed for this endpoint".to_string()));
+    }
+    let svc = rstat_service::create(
+        &state.pool,
+        &payload.name,
+        payload.kind,
+        Duration::from_secs(payload.interval),
+    ).await;
+    
+    match svc {
+        Ok(id) => (StatusCode::CREATED, Json(id.to_string())),
+        Err(err) => (StatusCode::BAD_REQUEST, Json(err.to_string())),
+    }
+}
+
+async fn delete_tcp_check(
+    State(state): State<AppState>,
+    Json(payload): Json<types::DeleteServiceRequest>,
+) -> StatusCode {
+    let service_id = match uuid::Uuid::parse_str(&payload.id) {
+        Ok(id) => id,
+        Err(_) => return StatusCode::BAD_REQUEST,
+    };
+    
+    let svc = rstat_service::delete(&state.pool, service_id).await;
+    
+    match svc {
+        Ok(()) => StatusCode::OK,
+        Err(err) => {
+            error!("Failed to delete TCP service: {}", err);
+            StatusCode::BAD_REQUEST
+        }
+    }
 } 
