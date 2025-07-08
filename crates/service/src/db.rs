@@ -66,6 +66,40 @@ pub async fn get(pool: &sqlx::PgPool, id: String) -> Result<Service, anyhow::Err
     Ok(svc)
 }
 
+pub async fn get_by_service_type(pool: &sqlx::PgPool, kind: &Kind) -> Result<Vec<Service>, sqlx::Error> {
+    let kind_str = kind.to_string();
+    let rows = sqlx::query!("SELECT id, name, kind, interval, config, next_run FROM services WHERE kind = $1", kind_str)
+        .fetch_all(pool)
+        .await?;
+    
+    let svc: Vec<Service> = rows
+        .iter()
+        .map(|row| {
+            let kind = match &row.config {
+                Some(config) => {
+                    let cfg: Kind = serde_json::from_value(config.clone()).unwrap();
+                    Some(cfg)
+                }
+                None => {
+                    warn!("Service {} has no config", row.id);
+                    None
+                }
+            }
+            .unwrap();
+
+            Service {
+                id: row.id,
+                name: row.name.clone(),
+                kind,
+                interval: Duration::from_secs(row.interval as u64),
+                next_run: row.next_run.and_utc(),
+            }
+        })
+        .collect();
+
+    Ok(svc)
+}
+
 pub async fn create(
     pool: &sqlx::PgPool,
     name: &str,
